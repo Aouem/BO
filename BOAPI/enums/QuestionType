@@ -1,0 +1,6 @@
+   public enum QuestionType
+    {
+        Boolean = 0,
+        Liste = 1,
+        Texte = 2
+    }
