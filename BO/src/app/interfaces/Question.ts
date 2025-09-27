@@ -1,8 +1,29 @@
+import { QuestionDto } from "../services/check-list-service";
 import { ResponseOption } from "./ResponseOption";
 
 export interface Question {
   texte: string;
-  type: 'Boolean' | 'BooleanNA' | 'Texte' | 'Liste'; // types de question
-  options?: ResponseOption[]; // uniquement pour Liste
-  hasNA?: boolean; // facultatif pour indiquer si N/A est présent
+  type: 'Boolean' | 'BooleanNA' | 'Texte' | 'Liste';
+  options?: ResponseOption[];
+  hasNA?: boolean;
+  reponse?: string;
+  id?: number;
+}
+
+export interface QuestionWithResponse extends Question {}
+
+// Fonction utilitaire pour convertir QuestionDto (backend) en Question (frontend)
+export function mapQuestionDtoToQuestion(q: QuestionDto): QuestionWithResponse {
+  let strictType: Question['type'] = 'Boolean';
+  if (q.type === 'Boolean' || q.type === 'BooleanNA' || q.type === 'Texte' || q.type === 'Liste') {
+    strictType = q.type;
+  }
+
+  return {
+    ...q,
+    type: strictType,
+    options: q.options || [],
+    reponse: '',
+    id: q.id
+  };
 }

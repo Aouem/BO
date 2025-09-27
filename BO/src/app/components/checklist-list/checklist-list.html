@@ -5,32 +5,59 @@
 </div>
 
 <div *ngIf="!loading" class="checklists-container">
-  <div *ngFor="let cl of checklists" class="checklist-block">
-    <h3>{{ cl.libelle }}</h3>
-
-    <div *ngFor="let etape of cl.etapes" class="etape-block">
-      <h4>Étape : {{ etape.nom }}</h4>
-      
-      <ul *ngIf="etape.questions && etape.questions.length > 0">
-        <li *ngFor="let q of etape.questions" class="question-block">
-          <strong>{{ q.texte }} ({{ q.type }})</strong>
-
-          <!-- Boolean -->
-          <div *ngIf="q.type === 'Boolean'" class="options">
-            <span *ngFor="let option of getBooleanOptions(q)" class="badge bg-primary me-2">{{ option }}</span>
-          </div>
-
-          <!-- Texte -->
-          <div *ngIf="q.type === 'Texte'" class="text-question">
-            <em>Réponse texte</em>
-          </div>
-
-          <!-- Liste -->
-          <ul *ngIf="q.type === 'Liste' && q.options && q.options.length > 0" class="list-options">
-            <li *ngFor="let o of q.options" class="badge bg-secondary me-2">{{ o.valeur }}</li>
-          </ul>
-        </li>
-      </ul>
+  <div *ngFor="let cl of checklists; let ci = index" class="checklist-block border p-3 mb-3 rounded">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h3 contenteditable="true"
+          (blur)="onBlurLibelle($event, cl)">
+        {{ cl.libelle }}
+      </h3>
+      <button class="btn btn-success btn-sm" (click)="saveChecklist(cl)">Sauvegarder</button>
     </div>
+
+    <div *ngFor="let etape of cl.etapes; let ei = index" class="etape-block border p-2 mb-2 rounded">
+      <div class="d-flex justify-content-between mb-1">
+        <input type="text" class="form-control me-2" placeholder="Nom de l'étape"
+               [(ngModel)]="etape.nom" />
+        <button class="btn btn-danger btn-sm" (click)="removeEtape(cl, ei)">Supprimer étape</button>
+      </div>
+
+      <div *ngFor="let q of etape.questions; let qi = index" class="question-block border p-2 mb-2 rounded">
+        <input type="text" class="form-control mb-1" placeholder="Texte de la question"
+               [(ngModel)]="q.texte" />
+
+        <!-- Type de question -->
+        <select #typeSelect class="form-select mb-1"
+                [ngModel]="q.type"
+                (ngModelChange)="updateQuestionTypeSafe(q, $event)">
+          <option value="Boolean">Oui / Non</option>
+          <option value="BooleanNA">Oui / Non / N/A</option>
+          <option value="Texte">Texte</option>
+          <option value="Liste">Liste</option>
+        </select>
+
+        <!-- Réponse Boolean / BooleanNA -->
+        <select *ngIf="q.type === 'Boolean' || q.type === 'BooleanNA'"
+                class="form-select mb-1"
+                [(ngModel)]="q.reponse">
+          <option value="">-- Sélectionner --</option>
+          <option *ngFor="let option of getBooleanOptions(q)" [value]="option">{{ option }}</option>
+        </select>
+
+        <!-- Options Liste -->
+        <div *ngIf="q.type === 'Liste'">
+          <div *ngFor="let o of q.options; let oi = index" class="d-flex gap-2 mb-1">
+            <input type="text" class="form-control" [(ngModel)]="o.valeur" placeholder="Valeur option" />
+            <button type="button" class="btn btn-danger btn-sm" (click)="removeOption(q, oi)">Supprimer</button>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" (click)="addOption(q)">Ajouter option</button>
+        </div>
+
+        <button type="button" class="btn btn-warning btn-sm mt-1" (click)="removeQuestion(etape, qi)">Supprimer question</button>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-sm mt-2" (click)="addQuestion(etape)">Ajouter une question</button>
+    </div>
+
+    <button type="button" class="btn btn-primary btn-sm mt-2" (click)="addEtape(cl)">Ajouter une étape</button>
   </div>
 </div>

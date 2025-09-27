@@ -1,62 +1,139 @@
-/* Container large */
+/* --- Container principal --- */
 .checklists-container {
   max-width: 1200px;
   margin: 2rem auto;
   padding: 0 1rem;
-  font-size: 1.2rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 1.15rem;
+  color: #343a40;
 }
 
-/* Checklist principale */
+/* --- Checklist principale --- */
 .checklist-block {
   padding: 2rem;
   margin-bottom: 2rem;
-  background: #f8f9fa;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border-left: 6px solid #0d6efd;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transition: transform 0.2s ease;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .checklist-block:hover {
-  transform: translateY(-3px);
+  transform: translateY(-5px);
+  box-shadow: 0 12px 25px rgba(0,0,0,0.15);
 }
 
 h3 {
   font-size: 2rem;
   color: #0d6efd;
   margin-bottom: 1rem;
+  cursor: text; /* Indique que c'est éditable */
+  transition: color 0.2s ease;
 }
 
-/* Étape */
+h3:focus {
+  color: #0b5ed7;
+  outline: none;
+}
+
+/* --- Étapes --- */
 .etape-block {
   padding: 1rem 1.5rem;
   margin-bottom: 1rem;
   background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease;
+}
+
+.etape-block:hover {
+  transform: translateY(-2px);
 }
 
 h4 {
   font-size: 1.5rem;
   margin-bottom: 0.75rem;
+  color: #495057;
 }
 
-/* Question */
+/* --- Questions --- */
 .question-block {
   margin-bottom: 0.75rem;
-  padding: 0.5rem 1rem;
-  border-left: 4px solid #6c757d;
-  border-radius: 6px;
-  background: #f1f3f5;
+  padding: 0.75rem 1rem;
+  border-left: 5px solid #6c757d;
+  border-radius: 8px;
+  background: #f8f9fa;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
-/* Options / badges */
+.question-block:hover {
+  background: #e9ecef;
+  transform: translateX(2px);
+}
+
+/* --- Inputs & selects --- */
+input.form-control, select.form-select {
+  border-radius: 6px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+input.form-control:focus, select.form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.25);
+  outline: none;
+}
+
+/* --- Buttons --- */
+button.btn {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+button.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+}
+
+/* --- Options / badges --- */
 .options span,
 .list-options li {
-  font-size: 1rem;
-  padding: 0.4rem 0.7rem;
+  font-size: 0.95rem;
+  padding: 0.35rem 0.7rem;
+  margin-right: 0.3rem;
+  background: #dee2e6;
+  border-radius: 6px;
+  display: inline-block;
+  transition: background 0.2s ease;
 }
 
+.options span:hover,
+.list-options li:hover {
+  background: #adb5bd;
+  cursor: pointer;
+}
+
+/* Badge générique */
 .badge {
-  font-size: 1rem;
+  font-size: 0.9rem;
+  background-color: #0d6efd;
+  color: #fff;
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+}
+
+/* --- Responsiveness --- */
+@media (max-width: 768px) {
+  .checklists-container {
+    padding: 0 0.5rem;
+  }
+  h3 {
+    font-size: 1.6rem;
+  }
+  h4 {
+    font-size: 1.3rem;
+  }
+  .question-block {
+    padding: 0.5rem 0.75rem;
+  }
 }
