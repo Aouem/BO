@@ -1,22 +1,36 @@
-<div *ngIf="loading">Chargement des checklists...</div>
+<div *ngIf="loading" class="loading">Chargement des checklists...</div>
 
-<div *ngIf="!loading && checklists.length === 0">
+<div *ngIf="!loading && checklists.length === 0" class="empty">
   Aucune checklist disponible.
 </div>
 
-<div *ngIf="!loading">
+<div *ngIf="!loading" class="checklists-container">
   <div *ngFor="let cl of checklists" class="checklist-block">
     <h3>{{ cl.libelle }}</h3>
-    
-    <ul *ngIf="cl.questions && cl.questions.length > 0">
-      <li *ngFor="let q of cl.questions">
-        <strong>{{ q.texte }} ({{ q.type }})</strong>
-        <ul *ngIf="q.options && q.options.length > 0">
-          <li *ngFor="let o of q.options">{{ o.valeur }}</li>
-        </ul>
-      </li>
-    </ul>
 
-    <hr>
+    <div *ngFor="let etape of cl.etapes" class="etape-block">
+      <h4>Étape : {{ etape.nom }}</h4>
+      
+      <ul *ngIf="etape.questions && etape.questions.length > 0">
+        <li *ngFor="let q of etape.questions" class="question-block">
+          <strong>{{ q.texte }} ({{ q.type }})</strong>
+
+          <!-- Boolean -->
+          <div *ngIf="q.type === 'Boolean'" class="options">
+            <span *ngFor="let option of getBooleanOptions(q)" class="badge bg-primary me-2">{{ option }}</span>
+          </div>
+
+          <!-- Texte -->
+          <div *ngIf="q.type === 'Texte'" class="text-question">
+            <em>Réponse texte</em>
+          </div>
+
+          <!-- Liste -->
+          <ul *ngIf="q.type === 'Liste' && q.options && q.options.length > 0" class="list-options">
+            <li *ngFor="let o of q.options" class="badge bg-secondary me-2">{{ o.valeur }}</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
   </div>
 </div>

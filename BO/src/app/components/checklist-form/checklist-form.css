@@ -1,175 +1,114 @@
-/* === Global === */
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f0f2f5;
-  color: #333;
-  margin: 0;
-  padding: 0;
-}
-
 form {
-  max-width: 750px;
+  max-width: 900px;
   margin: 2rem auto;
-  padding: 2.5rem 2rem;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-  transition: transform 0.3s ease;
+  padding: 2rem;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-form:hover {
-  transform: translateY(-2px);
-}
-
-/* === Title === */
 h2 {
   text-align: center;
-  font-size: 2rem;
-  margin-bottom: 2rem;
-  color: #0d6efd;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+  color: #4a4a4a;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
 }
 
-/* === Question Block === */
-.question-block {
-  position: relative;
-  padding: 1.2rem 1.5rem;
-  margin-bottom: 1.5rem;
-  background: #f8f9fa;
-  border-left: 6px solid #0d6efd;
+.alert {
   border-radius: 12px;
+  padding: 0.8rem 1rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.mb-3 label,
+.mb-2 label {
+  font-weight: 600;
+  color: #333;
+}
+
+input.form-control,
+select.form-select {
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 0.6rem 0.8rem;
   transition: all 0.3s ease;
+}
+
+input.form-control:focus,
+select.form-select:focus {
+  border-color: #4a90e2;
+  box-shadow: 0 0 8px rgba(74, 144, 226, 0.3);
+  outline: none;
+}
+
+.etape-block {
+  background: #f9f9f9;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.etape-block:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.question-block {
+  background: #ffffff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .question-block:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-}
-
-/* === Question Type Icons === */
-.question-block[data-type="Boolean"]::before {
-  content: "✔️";
-  position: absolute;
-  left: -28px;
-  top: 1rem;
-}
-
-.question-block[data-type="Texte"]::before {
-  content: "✏️";
-  position: absolute;
-  left: -28px;
-  top: 1rem;
-}
-
-.question-block[data-type="Liste"]::before {
-  content: "📋";
-  position: absolute;
-  left: -28px;
-  top: 1rem;
-}
-
-/* === Labels === */
-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-}
-
-/* === Inputs === */
-input[type="text"] {
-  width: 100%;
-  padding: 0.6rem 0.8rem;
-  border: 1px solid #ced4da;
-  border-radius: 8px;
-  transition: all 0.3s ease-in-out;
-}
-
-input[type="text"]:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 8px rgba(13, 110, 253, 0.3);
-  outline: none;
-}
-
-/* === Boolean / Radio === */
-div[ng-reflect-ng-if="Boolean"] label {
-  margin-right: 1.5rem;
-  font-weight: normal;
-}
-
-input[type="radio"] {
-  margin-right: 0.4rem;
-}
-
-/* === Liste / Select === */
-select.form-select {
-  width: 100%;
-  padding: 0.5rem 0.8rem;
-  border-radius: 8px;
-  border: 1px solid #ced4da;
-  background: #fff;
-  transition: all 0.3s ease-in-out;
-}
-
-select.form-select:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 8px rgba(13, 110, 253, 0.3);
-  outline: none;
-}
-
-/* === Buttons === */
-button[type="submit"] {
-  display: block;
-  width: 100%;
-  padding: 0.8rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #fff;
-  background: linear-gradient(135deg, #0d6efd, #6610f2);
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-button[type="submit"]::after {
-  content: "";
-  position: absolute;
-  width: 0;
-  height: 100%;
-  top: 0;
-  left: 0;
-  background: rgba(255,255,255,0.2);
-  transition: width 0.4s ease;
-}
-
-button[type="submit"]:hover::after {
-  width: 100%;
-}
-
-button[type="submit"]:hover {
-  background: linear-gradient(135deg, #6610f2, #0d6efd);
   transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(0,0,0,0.15);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.06);
 }
 
-/* === Valid / Invalid Input Indicators === */
-input.ng-valid.ng-touched {
-  border-color: #28a745;
+button {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
-input.ng-invalid.ng-touched {
-  border-color: #dc3545;
+button:hover {
+  transform: translateY(-2px);
 }
 
-/* === Responsive === */
-@media (max-width: 768px) {
-  form {
-    padding: 1.5rem 1rem;
-  }
+.btn-primary {
+  background-color: #4a90e2;
+  border: none;
+}
 
-  .question-block {
-    padding: 1rem 1.2rem;
-  }
+.btn-primary:hover {
+  background-color: #357ab8;
+}
+
+.btn-success {
+  background-color: #2ecc71;
+  border: none;
+}
+
+.btn-success:hover {
+  background-color: #27ae60;
+}
+
+.btn-warning {
+  background-color: #f39c12;
+  border: none;
+}
+
+.btn-warning:hover {
+  background-color: #d68910;
+}
+
+.btn-danger {
+  background-color: #e74c3c;
+  border: none;
+}
+
+.btn-danger:hover {
+  background-color: #c0392b;
+}
+
+.d-flex.gap-2 input {
+  flex: 1;
 }

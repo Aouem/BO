@@ -1,105 +1,57 @@
-// checklist-form.component.ts
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
+import { CheckListDto, CheckListService, QuestionDto } from '../../services/check-list-service';
 import { CommonModule } from '@angular/common';
-import { CheckListService, CreateCheckListDto } from '../../services/check-list-service';
-
-export interface ResponseOption {
-  valeur: string;
-}
 
 @Component({
   selector: 'app-checklist-form',
   templateUrl: './checklist-form.html',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+   imports: [
+    CommonModule,       // nécessaire pour *ngIf, *ngFor
+    ReactiveFormsModule // nécessaire pour formGroup, formControlName
+  ],
   styleUrls: ['./checklist-form.css']
 })
 export class CheckListFormComponent implements OnInit {
-  form!: FormGroup;
-  loading = false;
+  form: FormGroup;
+    checklists: CheckListDto[] = []; // <-- déclaration nécessaire
+  loading = true; // <-- déclaration ici
+  formSubmitted = false;
 
-  constructor(private fb: FormBuilder, private checklistService: CheckListService) {}
+  constructor(private fb: FormBuilder, private checklistService: CheckListService) {
+    this.form = this.fb.group({
+      libelle: ['', Validators.required],
+      etapes: this.fb.array([])
+    });
+  }
 
   ngOnInit(): void {
     this.initForm();
+        this.loadChecklists(); // méthode pour récupérer les checklists
+
+    this.addEtape();         // Étape par défaut
+    this.addQuestion(0);     // Question par défaut dans la première étape
   }
 
   // Initialisation du formulaire
-  initForm() {
+  initForm(): void {
     this.form = this.fb.group({
       libelle: ['', Validators.required],
-      questions: this.fb.array([])
+      etapes: this.fb.array([])
     });
   }
 
-  // Getter pour le FormArray questions
-  get questions(): FormArray {
-    return this.form.get('questions') as FormArray;
+  // Getter pour les étapes
+  get etapes(): FormArray {
+    return this.form.get('etapes') as FormArray;
   }
 
-  // Ajouter une nouvelle question
-  addQuestion() {
-    const questionGroup = this.fb.group({
-      texte: ['', Validators.required],
-      type: ['Boolean', Validators.required],
-      options: this.fb.array([]), // Tableau d’options si Liste
-      reponse: ['']
-    });
-    this.questions.push(questionGroup);
-  }
 
-  // Supprimer une question
-  removeQuestion(index: number) {
-    this.questions.removeAt(index);
-  }
-
-  // Getter pour les options d’une question
-  getOptions(questionIndex: number): FormArray {
-    return this.questions.at(questionIndex).get('options') as FormArray;
-  }
-
-  // Ajouter une option à une question de type Liste
-  addOption(questionIndex: number) {
-    this.getOptions(questionIndex).push(this.fb.group({ valeur: ['', Validators.required] }));
-  }
-
-  // Supprimer une option
-  removeOption(questionIndex: number, optionIndex: number) {
-    this.getOptions(questionIndex).removeAt(optionIndex);
-  }
-
-  // Quand le type de question change
-  onTypeChange(index: number) {
-    const q = this.questions.at(index);
-    if (q.get('type')?.value !== 'Liste') {
-      (q.get('options') as FormArray).clear();
-    }
-  }
-
-  // Soumission du formulaire
-  onSubmit() {
-    if (this.form.invalid) return;
-
-    const dto: CreateCheckListDto = {
-      libelle: this.form.value.libelle,
-      questions: this.form.value.questions.map((q: any) => ({
-        texte: q.texte,
-        type: q.type,
-        options: q.options?.map((o: ResponseOption) => ({ valeur: o.valeur })) || [],
-        reponse: q.reponse || ''
-      }))
-    };
-
-    console.log('DTO à envoyer :', dto);
-    this.loading = true;
-
-    this.checklistService.createCheckList(dto).subscribe({
-      next: res => {
-        console.log('Checklist créée:', res);
+  loadChecklists() {
+    this.checklistService.getAllCheckLists().subscribe({
+      next: data => {
+        this.checklists = data;
         this.loading = false;
-        this.form.reset();
-        this.questions.clear();
       },
       error: err => {
         console.error(err);
@@ -107,4 +59,82 @@ export class CheckListFormComponent implements OnInit {
       }
     });
   }
+  // Méthode pour récupérer les questions d'une étape
+  getQuestions(etapeIndex: number): FormArray {
+    return this.etapes.at(etapeIndex).get('questions') as FormArray;
+  }
+
+  // Méthode pour récupérer les options d'une question de type Liste
+  getOptions(etapeIndex: number, questionIndex: number): FormArray {
+    return this.getQuestions(etapeIndex).at(questionIndex).get('options') as FormArray;
+  }
+
+  // Ajouter une étape
+  addEtape(): void {
+    const etape = this.fb.group({
+      nom: ['', Validators.required],
+      questions: this.fb.array([])
+    });
+    this.etapes.push(etape);
+  }
+
+  // Supprimer une étape
+  removeEtape(index: number): void {
+    this.etapes.removeAt(index);
+  }
+
+  // Ajouter une question
+  addQuestion(etapeIndex: number): void {
+    const question = this.fb.group({
+      texte: ['', Validators.required],
+      type: ['Boolean', Validators.required],
+      options: this.fb.array([]) // uniquement pour type Liste
+    });
+    this.getQuestions(etapeIndex).push(question);
+  }
+
+  // Supprimer une question
+  removeQuestion(etapeIndex: number, questionIndex: number): void {
+    this.getQuestions(etapeIndex).removeAt(questionIndex);
+  }
+
+  // Ajouter une option pour une question de type Liste
+  addOption(etapeIndex: number, questionIndex: number): void {
+    const option = this.fb.group({
+      valeur: ['']
+    });
+    this.getOptions(etapeIndex, questionIndex).push(option);
+  }
+
+  // Supprimer une option
+  removeOption(etapeIndex: number, questionIndex: number, optionIndex: number): void {
+    this.getOptions(etapeIndex, questionIndex).removeAt(optionIndex);
+  }
+
+  // Méthode utilisée dans le template pour les questions Boolean / BooleanNA
+  getBooleanOptions(q: QuestionDto): string[] {
+    return q.type === 'BooleanNA' ? ['Oui', 'Non', 'N/A'] : ['Oui', 'Non'];
+  }
+
+  // Soumission du formulaire
+  onSubmit(): void {
+    if (this.form.valid) {
+      console.log(this.form.value);
+      this.formSubmitted = true;
+      // Ici tu peux appeler ton service pour enregistrer la checklist
+      // this.checklistService.createCheckList(this.form.value).subscribe(...)
+    } else {
+      console.log('Formulaire invalide');
+    }
+  }
+
+  // Gérer le changement de type pour afficher/masquer options
+onTypeChange(etapeIndex: number, questionIndex: number): void {
+  const question = this.getQuestions(etapeIndex).at(questionIndex) as FormGroup;
+  if (question.get('type')?.value !== 'Liste') {
+    // Supprime les options si le type n'est pas Liste
+    question.setControl('options', this.fb.array([]));
+  }
+}
+
 }

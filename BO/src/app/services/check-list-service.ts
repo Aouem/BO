@@ -5,7 +5,7 @@ import { environment } from '../../environments/environment';
 
 // DTO pour poster les questions avec options
 export interface CreateResponseOptionDto {
-    id?: number; 
+  id?: number; 
   valeur: string;
 }
 
@@ -16,23 +16,39 @@ export interface CreateQuestionDto {
   reponse?: string; // facultatif pour stocker la réponse
 }
 
-export interface CreateCheckListDto {
-  libelle: string;
+export interface CreateEtapeDto {
+  nom: string;
   questions: CreateQuestionDto[];
 }
 
+export interface CreateCheckListDto {
+  libelle: string;
+  etapes: CreateEtapeDto[]; // <-- ici on utilise "etapes" comme côté backend
+}
+
 // DTO pour récupérer depuis le backend
+export interface ResponseOptionDto {
+  id: number;
+  valeur: string;
+}
+
 export interface QuestionDto {
   id: number;
   texte: string;
   type: string; // "Boolean" | "Liste" | "Texte"
-  options: { id: number; valeur: string }[];
+  options: ResponseOptionDto[];
+}
+
+export interface EtapeDto {
+  id: number;
+  nom: string;
+  questions: QuestionDto[];
 }
 
 export interface CheckListDto {
   id: number;
   libelle: string;
-  questions: QuestionDto[];
+  etapes: EtapeDto[]; // <-- correspond au backend
 }
 
 @Injectable({
@@ -52,6 +68,6 @@ export class CheckListService {
   }
 
   createCheckList(dto: CreateCheckListDto): Observable<CheckListDto> {
-    return this.http.post<CheckListDto>(`${this.apiUrl}/with-questions`, dto);
+    return this.http.post<CheckListDto>(`${this.apiUrl}/with-etapes`, dto); // <-- correspond au backend
   }
 }

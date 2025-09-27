@@ -1,36 +1,52 @@
-<!-- checklist-form.html -->
 <form [formGroup]="form" (ngSubmit)="onSubmit()">
   <h2>Créer une checklist</h2>
+
+  <div *ngIf="formSubmitted" class="alert alert-success">
+    Checklist créée avec succès !
+  </div>
 
   <div class="mb-3">
     <label>Libellé de la checklist</label>
     <input formControlName="libelle" type="text" class="form-control" placeholder="Libellé" />
   </div>
 
-  <div formArrayName="questions">
-    <div *ngFor="let q of questions.controls; let i = index" [formGroupName]="i" class="question-block">
-      <label>Question {{ i + 1 }}</label>
-      <input formControlName="texte" type="text" class="form-control mb-2" placeholder="Texte de la question" />
+  <div formArrayName="etapes">
+    <div *ngFor="let etape of etapes.controls; let ei = index" [formGroupName]="ei" class="etape-block mb-3 p-2 border rounded">
+      <h4>Étape {{ ei + 1 }}</h4>
 
-      <select formControlName="type" class="form-select mb-2" (change)="onTypeChange(i)">
-        <option value="Boolean">Oui / Non</option>
-        <option value="Texte">Texte</option>
-        <option value="Liste">Liste</option>
-      </select>
-
-      <!-- Options uniquement si type = Liste -->
-      <div *ngIf="q.get('type')?.value === 'Liste'" formArrayName="options" class="mb-2">
-        <div *ngFor="let o of getOptions(i).controls; let j = index" [formGroupName]="j" class="d-flex gap-2 mb-1">
-          <input formControlName="valeur" type="text" class="form-control" placeholder="Valeur option" />
-          <button type="button" class="btn btn-danger btn-sm" (click)="removeOption(i, j)">Supprimer</button>
-        </div>
-        <button type="button" class="btn btn-secondary btn-sm" (click)="addOption(i)">Ajouter option</button>
+      <div class="mb-2">
+        <label>Nom de l'étape</label>
+        <input formControlName="nom" type="text" class="form-control" placeholder="Nom de l'étape" />
       </div>
 
-      <button type="button" class="btn btn-warning btn-sm mt-2" (click)="removeQuestion(i)">Supprimer question</button>
+      <div formArrayName="questions">
+        <div *ngFor="let q of getQuestions(ei).controls; let qi = index" [formGroupName]="qi" class="question-block mb-2 p-2 border rounded">
+          <label>Question {{ qi + 1 }}</label>
+          <input formControlName="texte" type="text" class="form-control mb-2" placeholder="Texte de la question" />
+
+          <select formControlName="type" class="form-select mb-2" (change)="onTypeChange(ei, qi)">
+            <option value="Boolean">Oui / Non</option>
+            <option value="Texte">Texte</option>
+            <option value="Liste">Liste</option>
+          </select>
+
+          <div *ngIf="q.get('type')?.value === 'Liste'" formArrayName="options" class="mb-2">
+            <div *ngFor="let o of getOptions(ei, qi).controls; let oi = index" [formGroupName]="oi" class="d-flex gap-2 mb-1">
+              <input formControlName="valeur" type="text" class="form-control" placeholder="Valeur option" />
+              <button type="button" class="btn btn-danger btn-sm" (click)="removeOption(ei, qi, oi)">Supprimer</button>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" (click)="addOption(ei, qi)">Ajouter option</button>
+          </div>
+
+          <button type="button" class="btn btn-warning btn-sm mt-2" (click)="removeQuestion(ei, qi)">Supprimer question</button>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-sm mt-2" (click)="addQuestion(ei)">Ajouter une question</button>
+      <button type="button" class="btn btn-danger btn-sm mt-2" (click)="removeEtape(ei)">Supprimer étape</button>
     </div>
   </div>
 
-  <button type="button" class="btn btn-primary mt-3" (click)="addQuestion()">Ajouter une question</button>
+  <button type="button" class="btn btn-primary mt-3" (click)="addEtape()">Ajouter une étape</button>
   <button type="submit" class="btn btn-success mt-3">Valider la checklist</button>
 </form>
