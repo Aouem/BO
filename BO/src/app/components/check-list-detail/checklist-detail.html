@@ -1,0 +1,43 @@
+<div *ngIf="loading">Chargement...</div>
+
+<div *ngIf="!loading && checklist">
+  <h2>{{ checklist.libelle }}</h2>
+  <p>Total de questions : {{ totalQuestions }}</p>
+
+  <div *ngFor="let etape of checklist.etapes; let ei = index" class="etape-block">
+    <h3>{{ etape.nom }}</h3>
+
+    <div *ngFor="let question of etape.questions; let qi = index" class="question-block">
+      <label>{{ question.texte }}</label>
+
+      <!-- Si type Boolean ou BooleanNA -->
+      <select *ngIf="question.type === 'Boolean' || question.type === 'BooleanNA'"
+              class="form-select"
+              [(ngModel)]="question.reponse">
+       <option *ngFor="let option of getBooleanOptions(question)" [value]="option">
+  {{ option }}
+</option>
+
+      </select>
+
+      <!-- Si type Liste -->
+      <select *ngIf="question.type === 'Liste'"
+              class="form-select"
+              [(ngModel)]="question.reponse">
+        <option *ngFor="let option of question.options" [value]="option.valeur">
+          {{ option.valeur }}
+        </option>
+      </select>
+
+      <!-- Si type Texte -->
+      <input *ngIf="question.type === 'Texte'"
+             type="text"
+             class="form-control"
+             [(ngModel)]="question.reponse">
+    </div>
+  </div>
+</div>
+
+<div *ngIf="!loading && !checklist">
+  <p>Checklist introuvable.</p>
+</div>

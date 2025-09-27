@@ -7,6 +7,6 @@ namespace BOAPI.DTOs
 {
     public int Id { get; set; }
     public string Libelle { get; set; } = string.Empty;
-    public List<QuestionDto> Questions { get; set; } = new();
+        public List<EtapeDto> Etapes { get; set; } = new();
 }
 }

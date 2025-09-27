@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { CheckListFormComponent } from './components/checklist-form/checklist-form';
 import { CheckListListComponent } from './components/checklist-list/checklist-list';
+import { CheckListDetailComponent } from './components/check-list-detail/check-list-detail'; // <-- Ajouté
 
 export const routes: Routes = [
   // Liste de toutes les checklists
@@ -10,7 +11,7 @@ export const routes: Routes = [
   { path: 'checklists/new', component: CheckListFormComponent },
 
   // Formulaire pour afficher/éditer une checklist par ID
-  { path: 'checklists/:id', component: CheckListFormComponent },
+  { path: 'checklists/:id', component: CheckListDetailComponent }, 
 
   // Redirection par défaut vers la liste
   { path: '', redirectTo: '/checklists', pathMatch: 'full' },

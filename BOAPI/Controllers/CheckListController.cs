@@ -22,54 +22,65 @@ namespace BOAPI.Controllers
         public async Task<ActionResult<IEnumerable<CheckListDto>>> GetAll()
         {
             var checkLists = await _context.CheckLists
-                .Include(c => c.Questions)
-                .ThenInclude(q => q.Options)
+                .Include(c => c.Etapes)
+                    .ThenInclude(e => e.Questions)
+                        .ThenInclude(q => q.Options)
                 .ToListAsync();
 
-            var dtoList = checkLists.Select(c => MapToDto(c)).ToList();
-            return dtoList;
+            return checkLists.Select(c => MapToDto(c)).ToList();
         }
 
         // GET: api/CheckList/5
         [HttpGet("{id:int}")]
         public async Task<ActionResult<CheckListDto>> GetById(int id)
         {
-            var item = await _context.CheckLists
-                .Include(c => c.Questions)
-                .ThenInclude(q => q.Options)
+            var checkList = await _context.CheckLists
+                .Include(c => c.Etapes)
+                    .ThenInclude(e => e.Questions)
+                        .ThenInclude(q => q.Options)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
-            if (item == null) return NotFound();
+            if (checkList == null) return NotFound();
 
-            return MapToDto(item);
+            return MapToDto(checkList);
         }
 
-        // POST: api/CheckList/with-questions
-        [HttpPost("with-questions")]
-        public async Task<ActionResult<CheckListDto>> CreateWithQuestions(CreateCheckListDto dto)
+        // POST: api/CheckList/with-etapes
+        [HttpPost("with-etapes")]
+        public async Task<ActionResult<CheckListDto>> CreateWithEtapes(CreateCheckListDto dto)
         {
             var checkList = new CheckList { Libelle = dto.Libelle ?? string.Empty };
 
-            if (dto.Questions != null)
+            if (dto.Etapes != null)
             {
-                foreach (var q in dto.Questions)
+                foreach (var eDto in dto.Etapes)
                 {
-                    if (string.IsNullOrEmpty(q.Type) || !Enum.TryParse<QuestionType>(q.Type, true, out var qType))
-                        return BadRequest($"Type de question invalide : {q.Type}");
+                    var etape = new Etape { Nom = eDto.Nom ?? string.Empty };
 
-                    var question = new Question
+                    if (eDto.Questions != null)
                     {
-                        Texte = q.Texte ?? string.Empty,
-                        Type = qType
-                    };
+                        foreach (var qDto in eDto.Questions)
+                        {
+                            if (string.IsNullOrEmpty(qDto.Type) || !Enum.TryParse<QuestionType>(qDto.Type, true, out var qType))
+                                return BadRequest($"Type de question invalide : {qDto.Type}");
 
-                    if (q.Options != null && question.Type == QuestionType.Liste)
-                    {
-                        foreach (var opt in q.Options)
-                            question.Options.Add(new ResponseOption { Valeur = opt.Valeur ?? string.Empty });
+                            var question = new Question
+                            {
+                                Texte = qDto.Texte ?? string.Empty,
+                                Type = qType
+                            };
+
+                            if (qType == QuestionType.Liste && qDto.Options != null)
+                            {
+                                foreach (var o in qDto.Options)
+                                    question.Options.Add(new ResponseOption { Valeur = o.Valeur ?? string.Empty });
+                            }
+
+                            etape.Questions.Add(question);
+                        }
                     }
 
-                    checkList.Questions.Add(question);
+                    checkList.Etapes.Add(etape);
                 }
             }
 
@@ -81,73 +92,106 @@ namespace BOAPI.Controllers
 
         // PUT: api/CheckList/5
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update(int id, UpdateCheckListDto dto)
+        public async Task<IActionResult> Update(int id, CreateCheckListDto dto)
         {
             var existing = await _context.CheckLists
-                .Include(c => c.Questions)
-                .ThenInclude(q => q.Options)
+                .Include(c => c.Etapes)
+                    .ThenInclude(e => e.Questions)
+                        .ThenInclude(q => q.Options)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
             if (existing == null) return NotFound();
 
             existing.Libelle = dto.Libelle ?? string.Empty;
 
-            // Supprimer les questions supprimées
-            var toRemoveQuestions = existing.Questions
-                .Where(q => dto.Questions == null || !dto.Questions.Any(dq => dq.Id == q.Id))
+            // Supprimer les étapes supprimées
+            var toRemoveEtapes = existing.Etapes
+                .Where(e => dto.Etapes == null || !dto.Etapes.Any(de => de.Nom == e.Nom))
                 .ToList();
-            _context.Questions.RemoveRange(toRemoveQuestions);
+            _context.Etapes.RemoveRange(toRemoveEtapes);
 
-            if (dto.Questions != null)
+            if (dto.Etapes != null)
             {
-                foreach (var qDto in dto.Questions)
+                foreach (var eDto in dto.Etapes)
                 {
-                    var q = existing.Questions.FirstOrDefault(x => x.Id == qDto.Id);
-                    if (q != null)
+                    var etape = existing.Etapes.FirstOrDefault(x => x.Nom == eDto.Nom);
+                    if (etape != null)
                     {
-                        q.Texte = qDto.Texte ?? string.Empty;
-                        q.Type = !string.IsNullOrEmpty(qDto.Type) ? Enum.Parse<QuestionType>(qDto.Type, true) : q.Type;
+                        // Mettre à jour les questions
+                        var toRemoveQuestions = etape.Questions
+                            .Where(q => eDto.Questions == null || !eDto.Questions.Any(dq => dq.Texte == q.Texte))
+                            .ToList();
+                        _context.Questions.RemoveRange(toRemoveQuestions);
 
-                        if (q.Type == QuestionType.Liste)
+                        if (eDto.Questions != null)
                         {
-                            var toRemoveOpts = q.Options
-                                .Where(o => qDto.Options == null || !qDto.Options.Any(od => od.Id == o.Id))
-                                .ToList();
-                            _context.ResponseOptions.RemoveRange(toRemoveOpts);
-
-                            if (qDto.Options != null)
+                            foreach (var qDto in eDto.Questions)
                             {
-                                foreach (var oDto in qDto.Options)
+                                var question = etape.Questions.FirstOrDefault(q => q.Texte == qDto.Texte);
+                                if (question != null)
                                 {
-                                    var opt = q.Options.FirstOrDefault(o => o.Id == oDto.Id);
-                                    if (opt != null)
-                                        opt.Valeur = oDto.Valeur ?? string.Empty;
+                                    question.Type = Enum.Parse<QuestionType>(qDto.Type, true);
+
+                                    if (question.Type == QuestionType.Liste)
+                                    {
+                                        var toRemoveOpts = question.Options
+                                            .Where(o => qDto.Options == null || !qDto.Options.Any(od => od.Valeur == o.Valeur))
+                                            .ToList();
+                                        _context.ResponseOptions.RemoveRange(toRemoveOpts);
+
+                                        if (qDto.Options != null)
+                                        {
+                                            foreach (var oDto in qDto.Options)
+                                            {
+                                                var opt = question.Options.FirstOrDefault(o => o.Valeur == oDto.Valeur);
+                                                if (opt == null)
+                                                    question.Options.Add(new ResponseOption { Valeur = oDto.Valeur ?? string.Empty });
+                                            }
+                                        }
+                                    }
                                     else
-                                        q.Options.Add(new ResponseOption { Valeur = oDto.Valeur ?? string.Empty });
+                                    {
+                                        _context.ResponseOptions.RemoveRange(question.Options);
+                                    }
+                                }
+                                else
+                                {
+                                    var newQ = new Question
+                                    {
+                                        Texte = qDto.Texte ?? string.Empty,
+                                        Type = Enum.Parse<QuestionType>(qDto.Type, true),
+                                        Options = new List<ResponseOption>()
+                                    };
+                                    if (newQ.Type == QuestionType.Liste && qDto.Options != null)
+                                        foreach (var o in qDto.Options)
+                                            newQ.Options.Add(new ResponseOption { Valeur = o.Valeur ?? string.Empty });
+
+                                    etape.Questions.Add(newQ);
                                 }
                             }
-                        }
-                        else
-                        {
-                            _context.ResponseOptions.RemoveRange(q.Options);
                         }
                     }
                     else
                     {
-                        var newQ = new Question
+                        var newEtape = new Etape { Nom = eDto.Nom ?? string.Empty, Questions = new List<Question>() };
+                        if (eDto.Questions != null)
                         {
-                            Texte = qDto.Texte ?? string.Empty,
-                            Type = !string.IsNullOrEmpty(qDto.Type) ? Enum.Parse<QuestionType>(qDto.Type, true) : QuestionType.Texte,
-                            Options = new List<ResponseOption>()
-                        };
+                            foreach (var qDto in eDto.Questions)
+                            {
+                                var newQ = new Question
+                                {
+                                    Texte = qDto.Texte ?? string.Empty,
+                                    Type = Enum.Parse<QuestionType>(qDto.Type, true),
+                                    Options = new List<ResponseOption>()
+                                };
+                                if (newQ.Type == QuestionType.Liste && qDto.Options != null)
+                                    foreach (var o in qDto.Options)
+                                        newQ.Options.Add(new ResponseOption { Valeur = o.Valeur ?? string.Empty });
 
-                        if (newQ.Type == QuestionType.Liste && qDto.Options != null)
-                        {
-                            foreach (var oDto in qDto.Options)
-                                newQ.Options.Add(new ResponseOption { Valeur = oDto.Valeur ?? string.Empty });
+                                newEtape.Questions.Add(newQ);
+                            }
                         }
-
-                        existing.Questions.Add(newQ);
+                        existing.Etapes.Add(newEtape);
                     }
                 }
             }
@@ -160,35 +204,46 @@ namespace BOAPI.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var item = await _context.CheckLists
-                .Include(c => c.Questions)
-                .ThenInclude(q => q.Options)
+            var checkList = await _context.CheckLists
+                .Include(c => c.Etapes)
+                    .ThenInclude(e => e.Questions)
+                        .ThenInclude(q => q.Options)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
-            if (item == null) return NotFound();
+            if (checkList == null) return NotFound();
 
-            _context.ResponseOptions.RemoveRange(item.Questions.SelectMany(q => q.Options));
-            _context.Questions.RemoveRange(item.Questions);
-            _context.CheckLists.Remove(item);
+            foreach (var etape in checkList.Etapes)
+            {
+                foreach (var q in etape.Questions)
+                    _context.ResponseOptions.RemoveRange(q.Options);
+                _context.Questions.RemoveRange(etape.Questions);
+            }
+            _context.Etapes.RemoveRange(checkList.Etapes);
+            _context.CheckLists.Remove(checkList);
 
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        // Mapping private
+        // Mapping privé
         private CheckListDto MapToDto(CheckList checkList) => new CheckListDto
         {
             Id = checkList.Id,
             Libelle = checkList.Libelle,
-            Questions = checkList.Questions.Select(q => new QuestionDto
+            Etapes = checkList.Etapes.Select(e => new EtapeDto
             {
-                Id = q.Id,
-                Texte = q.Texte,
-                Type = q.Type.ToString(),
-                Options = q.Options.Select(o => new ResponseOptionDto
+                Id = e.Id,
+                Nom = e.Nom,
+                Questions = e.Questions.Select(q => new QuestionDto
                 {
-                    Id = o.Id,
-                    Valeur = o.Valeur
+                    Id = q.Id,
+                    Texte = q.Texte,
+                    Type = q.Type.ToString(),
+                    Options = q.Options.Select(o => new ResponseOptionDto
+                    {
+                        Id = o.Id,
+                        Valeur = o.Valeur
+                    }).ToList()
                 }).ToList()
             }).ToList()
         };
