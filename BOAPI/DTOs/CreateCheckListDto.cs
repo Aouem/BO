@@ -1,9 +1,10 @@
-   using System.Collections.Generic;
-using BOAPI.DTOs; // <- ajoute ceci si CreateQuestionDto est dans le namespace BOAPI.DTOs
+using System.Collections.Generic;
 
-
- public class CreateCheckListDto
+namespace BOAPI.DTOs
+{
+   public class CreateCheckListDto
 {
     public string Libelle { get; set; } = string.Empty;
-    public List<CreateQuestionDto>? Questions { get; set; } = new();
+    public List<CreateQuestionDto> Questions { get; set; } = new();
+}
 }

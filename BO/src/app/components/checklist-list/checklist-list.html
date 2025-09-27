@@ -1,0 +1,22 @@
+<div *ngIf="loading">Chargement des checklists...</div>
+
+<div *ngIf="!loading && checklists.length === 0">
+  Aucune checklist disponible.
+</div>
+
+<div *ngIf="!loading">
+  <div *ngFor="let cl of checklists" class="checklist-block">
+    <h3>{{ cl.libelle }}</h3>
+    
+    <ul *ngIf="cl.questions && cl.questions.length > 0">
+      <li *ngFor="let q of cl.questions">
+        <strong>{{ q.texte }} ({{ q.type }})</strong>
+        <ul *ngIf="q.options && q.options.length > 0">
+          <li *ngFor="let o of q.options">{{ o.valeur }}</li>
+        </ul>
+      </li>
+    </ul>
+
+    <hr>
+  </div>
+</div>

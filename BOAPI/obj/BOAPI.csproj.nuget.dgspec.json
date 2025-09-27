@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/ak/Documents/BOAPI/BOAPI.csproj": {}
+    "/home/ak/Documents/BOChecklist/BOAPI/BOAPI.csproj": {}
   },
   "projects": {
-    "/home/ak/Documents/BOAPI/BOAPI.csproj": {
+    "/home/ak/Documents/BOChecklist/BOAPI/BOAPI.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/ak/Documents/BOAPI/BOAPI.csproj",
+        "projectUniqueName": "/home/ak/Documents/BOChecklist/BOAPI/BOAPI.csproj",
         "projectName": "BOAPI",
-        "projectPath": "/home/ak/Documents/BOAPI/BOAPI.csproj",
+        "projectPath": "/home/ak/Documents/BOChecklist/BOAPI/BOAPI.csproj",
         "packagesPath": "/home/ak/.nuget/packages/",
-        "outputPath": "/home/ak/Documents/BOAPI/obj/",
+        "outputPath": "/home/ak/Documents/BOChecklist/BOAPI/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/ak/.nuget/NuGet/NuGet.Config"
