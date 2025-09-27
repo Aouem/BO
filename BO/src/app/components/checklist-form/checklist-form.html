@@ -11,25 +11,39 @@
   </div>
 
   <div formArrayName="etapes">
-    <div *ngFor="let etape of etapes.controls; let ei = index" [formGroupName]="ei" class="etape-block mb-3 p-2 border rounded">
+    <div *ngFor="let etape of etapes.controls; let ei = index" [formGroupName]="ei" class="etape-block mb-3 p-3 border rounded">
       <h4>Étape {{ ei + 1 }}</h4>
 
-      <div class="mb-2">
+      <div class="mb-3">
         <label>Nom de l'étape</label>
         <input formControlName="nom" type="text" class="form-control" placeholder="Nom de l'étape" />
       </div>
 
       <div formArrayName="questions">
-        <div *ngFor="let q of getQuestions(ei).controls; let qi = index" [formGroupName]="qi" class="question-block mb-2 p-2 border rounded">
+        <div *ngFor="let q of getQuestions(ei).controls; let qi = index" [formGroupName]="qi" class="question-block mb-3 p-3 border rounded">
           <label>Question {{ qi + 1 }}</label>
           <input formControlName="texte" type="text" class="form-control mb-2" placeholder="Texte de la question" />
 
+          <!-- Type de question -->
           <select formControlName="type" class="form-select mb-2" (change)="onTypeChange(ei, qi)">
             <option value="Boolean">Oui / Non</option>
+            <option value="BooleanNA">Oui / Non / N/A</option>
             <option value="Texte">Texte</option>
             <option value="Liste">Liste</option>
           </select>
 
+          <!-- Réponse pour Boolean et BooleanNA -->
+          <div *ngIf="q.get('type')?.value === 'Boolean' || q.get('type')?.value === 'BooleanNA'" class="mb-2">
+            <label>Réponse</label>
+            <select formControlName="reponse" class="form-select">
+              <option value="">-- Sélectionner --</option>
+              <option value="Oui">Oui</option>
+              <option value="Non">Non</option>
+              <option *ngIf="q.get('type')?.value === 'BooleanNA'" value="N/A">N/A</option>
+            </select>
+          </div>
+
+          <!-- Réponse Liste -->
           <div *ngIf="q.get('type')?.value === 'Liste'" formArrayName="options" class="mb-2">
             <div *ngFor="let o of getOptions(ei, qi).controls; let oi = index" [formGroupName]="oi" class="d-flex gap-2 mb-1">
               <input formControlName="valeur" type="text" class="form-control" placeholder="Valeur option" />
@@ -38,10 +52,12 @@
             <button type="button" class="btn btn-secondary btn-sm" (click)="addOption(ei, qi)">Ajouter option</button>
           </div>
 
+          <!-- Bouton supprimer question -->
           <button type="button" class="btn btn-warning btn-sm mt-2" (click)="removeQuestion(ei, qi)">Supprimer question</button>
         </div>
       </div>
 
+      <!-- Boutons ajouter/supprimer étape et question -->
       <button type="button" class="btn btn-primary btn-sm mt-2" (click)="addQuestion(ei)">Ajouter une question</button>
       <button type="button" class="btn btn-danger btn-sm mt-2" (click)="removeEtape(ei)">Supprimer étape</button>
     </div>
