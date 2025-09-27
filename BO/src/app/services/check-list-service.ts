@@ -68,6 +68,15 @@ export class CheckListService {
   }
 
   createCheckList(dto: CreateCheckListDto): Observable<CheckListDto> {
-    return this.http.post<CheckListDto>(`${this.apiUrl}/with-etapes`, dto); // <-- correspond au backend
+    return this.http.post<CheckListDto>(`${this.apiUrl}/with-etapes`, dto);
+  }
+
+  // --- NOUVELLE MÉTHODE POUR LA MISE À JOUR ---
+  updateCheckList(id: number, dto: CreateCheckListDto): Observable<CheckListDto> {
+    return this.http.put<CheckListDto>(`${this.apiUrl}/${id}`, dto);
+  }
+
+  deleteCheckList(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 }

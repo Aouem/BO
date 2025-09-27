@@ -6,9 +6,11 @@ export const routes: Routes = [
   // Liste de toutes les checklists
   { path: 'checklists', component: CheckListListComponent },
 
-  // Formulaire pour créer ou éditer une checklist
-  { path: 'checklist/new', component: CheckListFormComponent },
-  { path: 'checklist/:id', component: CheckListFormComponent },
+  // Formulaire pour créer une checklist
+  { path: 'checklists/new', component: CheckListFormComponent },
+
+  // Formulaire pour afficher/éditer une checklist par ID
+  { path: 'checklists/:id', component: CheckListFormComponent },
 
   // Redirection par défaut vers la liste
   { path: '', redirectTo: '/checklists', pathMatch: 'full' },

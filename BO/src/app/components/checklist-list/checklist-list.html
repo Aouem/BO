@@ -1,33 +1,90 @@
-<div *ngIf="loading" class="loading">Chargement des checklists...</div>
+<div class="checklists-container">
+  <!-- En-tête avec bouton de création -->
+  <div class="header-actions">
+    <h1>Mes Checklists</h1>
+    <button class="btn btn-primary" (click)="createNewChecklist()">
+      + Nouvelle Checklist
+    </button>
+  </div>
 
-<div *ngIf="!loading && checklists.length === 0" class="empty">
-  Aucune checklist disponible.
-</div>
+  <!-- Barre de recherche -->
+  <div class="search-container">
+    <div class="search-box">
+      <input 
+        type="text" 
+        class="form-control search-input" 
+        placeholder="🔍 Rechercher une checklist, étape ou question..."
+        [(ngModel)]="searchTerm"
+        (input)="filterChecklists()"
+      />
+      <button 
+        *ngIf="searchTerm" 
+        class="btn btn-clear" 
+        (click)="clearSearch()"
+        title="Effacer la recherche"
+      >
+        ✕
+      </button>
+    </div>
+    <div class="search-info" *ngIf="searchTerm">
+      <span class="badge">{{ filteredChecklists.length }} résultat(s) trouvé(s)</span>
+    </div>
+  </div>
 
-<div *ngIf="!loading" class="checklists-container">
-  <div *ngFor="let cl of checklists; let ci = index" class="checklist-block border p-3 mb-3 rounded">
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Chargement des checklists...</p>
+  </div>
+
+  <!-- Liste des checklists filtrées -->
+  <div *ngFor="let cl of filteredChecklists; let ci = index" class="checklist-block border p-3 mb-3 rounded">
     <div class="d-flex justify-content-between align-items-center mb-2">
-      <h3 contenteditable="true"
-          (blur)="onBlurLibelle($event, cl)">
-        {{ cl.libelle }}
-      </h3>
-      <button class="btn btn-success btn-sm" (click)="saveChecklist(cl)">Sauvegarder</button>
+      <div class="checklist-header">
+        <h3 contenteditable="true" (blur)="onBlurLibelle($event, cl)">
+          {{ cl.libelle }}
+        </h3>
+        <div class="checklist-stats">
+          <span class="badge">{{ getTotalEtapes(cl) }} étape(s)</span>
+          <span class="badge">{{ getTotalQuestions(cl) }} question(s)</span>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <!-- Bouton pour voir les détails -->
+        <button class="btn btn-info btn-sm" (click)="viewChecklistDetail(cl.id!)" 
+                title="Voir la checklist">
+          👁️ Voir
+        </button>
+        <!-- Bouton pour éditer -->
+        <button class="btn btn-warning btn-sm" (click)="editChecklist(cl.id!)" 
+                title="Modifier la checklist">
+            ✏️ Modifier
+        </button>
+        <button class="btn btn-success btn-sm" (click)="saveChecklist(cl)" 
+                title="Sauvegarder les modifications">
+            💾 Sauvegarder
+        </button>
+        <button class="btn btn-danger btn-sm" (click)="deleteChecklist(cl)" 
+                title="Supprimer la checklist">
+            🗑️ Supprimer
+        </button>
+      </div>
     </div>
 
     <div *ngFor="let etape of cl.etapes; let ei = index" class="etape-block border p-2 mb-2 rounded">
       <div class="d-flex justify-content-between mb-1">
-        <input type="text" class="form-control me-2" placeholder="Nom de l'étape"
+        <input type="text" class="form-control me-2" placeholder="Nom de l'étape" 
                [(ngModel)]="etape.nom" />
-        <button class="btn btn-danger btn-sm" (click)="removeEtape(cl, ei)">Supprimer étape</button>
+        <button class="btn btn-danger btn-sm" (click)="removeEtape(cl, ei)">
+          Supprimer étape
+        </button>
       </div>
 
       <div *ngFor="let q of etape.questions; let qi = index" class="question-block border p-2 mb-2 rounded">
-        <input type="text" class="form-control mb-1" placeholder="Texte de la question"
+        <input type="text" class="form-control mb-1" placeholder="Texte de la question" 
                [(ngModel)]="q.texte" />
 
-        <!-- Type de question -->
-        <select #typeSelect class="form-select mb-1"
-                [ngModel]="q.type"
+        <select #typeSelect class="form-select mb-1" [ngModel]="q.type" 
                 (ngModelChange)="updateQuestionTypeSafe(q, $event)">
           <option value="Boolean">Oui / Non</option>
           <option value="BooleanNA">Oui / Non / N/A</option>
@@ -35,29 +92,52 @@
           <option value="Liste">Liste</option>
         </select>
 
-        <!-- Réponse Boolean / BooleanNA -->
-        <select *ngIf="q.type === 'Boolean' || q.type === 'BooleanNA'"
-                class="form-select mb-1"
+        <select *ngIf="q.type === 'Boolean' || q.type === 'BooleanNA'" class="form-select mb-1" 
                 [(ngModel)]="q.reponse">
           <option value="">-- Sélectionner --</option>
-          <option *ngFor="let option of getBooleanOptions(q)" [value]="option">{{ option }}</option>
+          <option *ngFor="let option of getBooleanOptions(q)" [value]="option">
+            {{ option }}
+          </option>
         </select>
 
-        <!-- Options Liste -->
         <div *ngIf="q.type === 'Liste'">
           <div *ngFor="let o of q.options; let oi = index" class="d-flex gap-2 mb-1">
-            <input type="text" class="form-control" [(ngModel)]="o.valeur" placeholder="Valeur option" />
-            <button type="button" class="btn btn-danger btn-sm" (click)="removeOption(q, oi)">Supprimer</button>
+            <input type="text" class="form-control" [(ngModel)]="o.valeur" 
+                   placeholder="Valeur option" />
+            <button type="button" class="btn btn-danger btn-sm" 
+                    (click)="removeOption(q, oi)">Supprimer</button>
           </div>
-          <button type="button" class="btn btn-secondary btn-sm" (click)="addOption(q)">Ajouter option</button>
+          <button type="button" class="btn btn-secondary btn-sm" 
+                  (click)="addOption(q)">Ajouter option</button>
         </div>
 
-        <button type="button" class="btn btn-warning btn-sm mt-1" (click)="removeQuestion(etape, qi)">Supprimer question</button>
+        <button type="button" class="btn btn-warning btn-sm mt-1" 
+                (click)="removeQuestion(etape, qi)">Supprimer question</button>
       </div>
 
-      <button type="button" class="btn btn-primary btn-sm mt-2" (click)="addQuestion(etape)">Ajouter une question</button>
+      <button type="button" class="btn btn-primary btn-sm mt-2" 
+              (click)="addQuestion(etape)">Ajouter une question</button>
     </div>
 
-    <button type="button" class="btn btn-primary btn-sm mt-2" (click)="addEtape(cl)">Ajouter une étape</button>
+    <button type="button" class="btn btn-primary btn-sm mt-2" 
+            (click)="addEtape(cl)">Ajouter une étape</button>
+  </div>
+
+  <!-- Message si aucune checklist après recherche -->
+  <div *ngIf="!loading && filteredChecklists.length === 0" class="empty-state">
+    <div *ngIf="searchTerm; else noChecklists">
+      <h2>Aucun résultat trouvé</h2>
+      <p>Aucune checklist ne correspond à votre recherche "{{ searchTerm }}"</p>
+      <button class="btn btn-secondary" (click)="clearSearch()">
+        Afficher toutes les checklists
+      </button>
+    </div>
+    <ng-template #noChecklists>
+      <h2>Aucune checklist trouvée</h2>
+      <p>Commencez par créer votre première checklist !</p>
+      <button class="btn btn-primary" (click)="createNewChecklist()">
+        Créer une checklist
+      </button>
+    </ng-template>
   </div>
 </div>
