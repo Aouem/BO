@@ -1,5 +1,9 @@
-public class UpdateResponseOptionDto
+namespace BOAPI.DTOs
 {
-    public int Id { get; set; } // Id obligatoire pour mettre à jour ou supprimer
-    public required string Valeur { get; set; } // required pour éviter CS8618
+    public class UpdateResponseOptionDto
+    {
+        public int Id { get; set; }
+        public string Valeur { get; set; } = string.Empty;
+        public int Ordre { get; set; }
+    }
 }

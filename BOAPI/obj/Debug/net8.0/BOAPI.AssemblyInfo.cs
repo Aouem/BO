@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BOAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6f0e2a2ee9bf7f470523cee17e5fdc67cab0ed4c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0ea7244e325e2393a7dfcf3dda0fa9c37636c053")]
 [assembly: System.Reflection.AssemblyProductAttribute("BOAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BOAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

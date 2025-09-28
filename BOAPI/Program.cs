@@ -1,5 +1,6 @@
 using BOAPI.Data;
 using Microsoft.EntityFrameworkCore;
+using BOAPI.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +13,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:4200") // URL de ton Angular
+        policy.WithOrigins("http://localhost:4200")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -23,6 +24,28 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+// 🔹 SEED DATA - Exécuter après la création de l'app
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<BOContext>();
+        
+        // Appliquer les migrations automatiquement
+        context.Database.Migrate();
+        
+        // Seed des données
+        DataSeeder.SeedCheckListSecuritePatient(context);
+        DataSeeder.SeedPersonnel(context);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Une erreur est survenue lors du seed des données.");
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
