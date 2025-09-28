@@ -90,115 +90,124 @@ namespace BOAPI.Controllers
             return CreatedAtAction(nameof(GetById), new { id = checkList.Id }, MapToDto(checkList));
         }
 
-        // PUT: api/CheckList/5
-        [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update(int id, CreateCheckListDto dto)
+      // PUT: api/CheckList/5
+[HttpPut("{id:int}")]
+public async Task<ActionResult<CheckListDto>> Update(int id, CreateCheckListDto dto)
+{
+    var existing = await _context.CheckLists
+        .Include(c => c.Etapes)
+            .ThenInclude(e => e.Questions)
+                .ThenInclude(q => q.Options)
+        .FirstOrDefaultAsync(c => c.Id == id);
+
+    if (existing == null) return NotFound();
+
+    existing.Libelle = dto.Libelle ?? string.Empty;
+
+    // Supprimer les étapes supprimées
+    var toRemoveEtapes = existing.Etapes
+        .Where(e => dto.Etapes == null || !dto.Etapes.Any(de => de.Nom == e.Nom))
+        .ToList();
+    _context.Etapes.RemoveRange(toRemoveEtapes);
+
+    if (dto.Etapes != null)
+    {
+        foreach (var eDto in dto.Etapes)
         {
-            var existing = await _context.CheckLists
-                .Include(c => c.Etapes)
-                    .ThenInclude(e => e.Questions)
-                        .ThenInclude(q => q.Options)
-                .FirstOrDefaultAsync(c => c.Id == id);
-
-            if (existing == null) return NotFound();
-
-            existing.Libelle = dto.Libelle ?? string.Empty;
-
-            // Supprimer les étapes supprimées
-            var toRemoveEtapes = existing.Etapes
-                .Where(e => dto.Etapes == null || !dto.Etapes.Any(de => de.Nom == e.Nom))
-                .ToList();
-            _context.Etapes.RemoveRange(toRemoveEtapes);
-
-            if (dto.Etapes != null)
+            var etape = existing.Etapes.FirstOrDefault(x => x.Nom == eDto.Nom);
+            if (etape != null)
             {
-                foreach (var eDto in dto.Etapes)
+                // Mettre à jour les questions
+                var toRemoveQuestions = etape.Questions
+                    .Where(q => eDto.Questions == null || !eDto.Questions.Any(dq => dq.Texte == q.Texte))
+                    .ToList();
+                _context.Questions.RemoveRange(toRemoveQuestions);
+
+                if (eDto.Questions != null)
                 {
-                    var etape = existing.Etapes.FirstOrDefault(x => x.Nom == eDto.Nom);
-                    if (etape != null)
+                    foreach (var qDto in eDto.Questions)
                     {
-                        // Mettre à jour les questions
-                        var toRemoveQuestions = etape.Questions
-                            .Where(q => eDto.Questions == null || !eDto.Questions.Any(dq => dq.Texte == q.Texte))
-                            .ToList();
-                        _context.Questions.RemoveRange(toRemoveQuestions);
+                        if (!Enum.TryParse<QuestionType>(qDto.Type, true, out var qType))
+                            return BadRequest($"Type de question invalide : {qDto.Type}");
 
-                        if (eDto.Questions != null)
+                        var question = etape.Questions.FirstOrDefault(q => q.Texte == qDto.Texte);
+                        if (question != null)
                         {
-                            foreach (var qDto in eDto.Questions)
+                            question.Type = qType;
+
+                            if (question.Type == QuestionType.Liste)
                             {
-                                var question = etape.Questions.FirstOrDefault(q => q.Texte == qDto.Texte);
-                                if (question != null)
+                                var toRemoveOpts = question.Options
+                                    .Where(o => qDto.Options == null || !qDto.Options.Any(od => od.Valeur == o.Valeur))
+                                    .ToList();
+                                _context.ResponseOptions.RemoveRange(toRemoveOpts);
+
+                                if (qDto.Options != null)
                                 {
-                                    question.Type = Enum.Parse<QuestionType>(qDto.Type, true);
-
-                                    if (question.Type == QuestionType.Liste)
+                                    foreach (var oDto in qDto.Options)
                                     {
-                                        var toRemoveOpts = question.Options
-                                            .Where(o => qDto.Options == null || !qDto.Options.Any(od => od.Valeur == o.Valeur))
-                                            .ToList();
-                                        _context.ResponseOptions.RemoveRange(toRemoveOpts);
-
-                                        if (qDto.Options != null)
-                                        {
-                                            foreach (var oDto in qDto.Options)
-                                            {
-                                                var opt = question.Options.FirstOrDefault(o => o.Valeur == oDto.Valeur);
-                                                if (opt == null)
-                                                    question.Options.Add(new ResponseOption { Valeur = oDto.Valeur ?? string.Empty });
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        _context.ResponseOptions.RemoveRange(question.Options);
+                                        var opt = question.Options.FirstOrDefault(o => o.Valeur == oDto.Valeur);
+                                        if (opt == null)
+                                            question.Options.Add(new ResponseOption { Valeur = oDto.Valeur ?? string.Empty });
                                     }
                                 }
-                                else
-                                {
-                                    var newQ = new Question
-                                    {
-                                        Texte = qDto.Texte ?? string.Empty,
-                                        Type = Enum.Parse<QuestionType>(qDto.Type, true),
-                                        Options = new List<ResponseOption>()
-                                    };
-                                    if (newQ.Type == QuestionType.Liste && qDto.Options != null)
-                                        foreach (var o in qDto.Options)
-                                            newQ.Options.Add(new ResponseOption { Valeur = o.Valeur ?? string.Empty });
-
-                                    etape.Questions.Add(newQ);
-                                }
                             }
-                        }
-                    }
-                    else
-                    {
-                        var newEtape = new Etape { Nom = eDto.Nom ?? string.Empty, Questions = new List<Question>() };
-                        if (eDto.Questions != null)
-                        {
-                            foreach (var qDto in eDto.Questions)
+                            else
                             {
-                                var newQ = new Question
-                                {
-                                    Texte = qDto.Texte ?? string.Empty,
-                                    Type = Enum.Parse<QuestionType>(qDto.Type, true),
-                                    Options = new List<ResponseOption>()
-                                };
-                                if (newQ.Type == QuestionType.Liste && qDto.Options != null)
-                                    foreach (var o in qDto.Options)
-                                        newQ.Options.Add(new ResponseOption { Valeur = o.Valeur ?? string.Empty });
-
-                                newEtape.Questions.Add(newQ);
+                                _context.ResponseOptions.RemoveRange(question.Options);
                             }
                         }
-                        existing.Etapes.Add(newEtape);
+                        else
+                        {
+                            var newQ = new Question
+                            {
+                                Texte = qDto.Texte ?? string.Empty,
+                                Type = qType,
+                                Options = new List<ResponseOption>()
+                            };
+                            if (qType == QuestionType.Liste && qDto.Options != null)
+                                foreach (var o in qDto.Options)
+                                    newQ.Options.Add(new ResponseOption { Valeur = o.Valeur ?? string.Empty });
+
+                            etape.Questions.Add(newQ);
+                        }
                     }
                 }
             }
+            else
+            {
+                var newEtape = new Etape { Nom = eDto.Nom ?? string.Empty, Questions = new List<Question>() };
+                if (eDto.Questions != null)
+                {
+                    foreach (var qDto in eDto.Questions)
+                    {
+                        if (!Enum.TryParse<QuestionType>(qDto.Type, true, out var qType))
+                            return BadRequest($"Type de question invalide : {qDto.Type}");
 
-            await _context.SaveChangesAsync();
-            return NoContent();
+                        var newQ = new Question
+                        {
+                            Texte = qDto.Texte ?? string.Empty,
+                            Type = qType,
+                            Options = new List<ResponseOption>()
+                        };
+                        if (qType == QuestionType.Liste && qDto.Options != null)
+                            foreach (var o in qDto.Options)
+                                newQ.Options.Add(new ResponseOption { Valeur = o.Valeur ?? string.Empty });
+
+                        newEtape.Questions.Add(newQ);
+                    }
+                }
+                existing.Etapes.Add(newEtape);
+            }
         }
+    }
+
+    await _context.SaveChangesAsync();
+
+    // ✅ Retourne la checklist mise à jour
+    return Ok(MapToDto(existing));
+}
+
 
         // DELETE: api/CheckList/5
         [HttpDelete("{id:int}")]
