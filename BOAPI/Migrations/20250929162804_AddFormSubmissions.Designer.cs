@@ -4,6 +4,7 @@ using BOAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BOAPI.Migrations
 {
     [DbContext(typeof(BOContext))]
-    partial class BOContextModelSnapshot : ModelSnapshot
+    [Migration("20250929162804_AddFormSubmissions")]
+    partial class AddFormSubmissions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -135,8 +138,7 @@ namespace BOAPI.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Reponse")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("SubmissionId")
                         .HasColumnType("int");
@@ -162,13 +164,10 @@ namespace BOAPI.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTime>("SubmittedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("SubmittedBy")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

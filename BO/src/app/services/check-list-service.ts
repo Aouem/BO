@@ -1,11 +1,11 @@
 // check-list-service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map, switchMap, catchError, of, throwError, forkJoin } from 'rxjs';
+import { Observable, map, switchMap, catchError, of, forkJoin, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   CheckListDto, QuestionDto, EtapeDto,
-  FormSubmissionDto, QuestionResponseDto, CreateCheckListDto
+  FormSubmissionDto, QuestionResponseDto, CreateCheckListDto, FormResponseDto
 } from '../models';
 
 // Attache des soumissions à chaque question
@@ -28,18 +28,19 @@ export type AggregatedChecklistDto =
 
 @Injectable({ providedIn: 'root' })
 export class CheckListService {
-  private apiUrl = `${environment.apiUrl}/CheckList`;
-
-  // ⚠️ Ajuste selon ton API réelle
-  private submissionsUrl = `${environment.apiUrl}/FormResponse`;
+  private apiUrl  = `${environment.apiUrl}/CheckList`;
+  private formApi = `${environment.apiUrl}/Form`; // ✅ base “Form” (POST submit / GET submissions)
 
   constructor(private http: HttpClient) {}
 
+  // ===== CheckList CRUD =====
   getCheckList(id: number): Observable<CheckListDto> {
     return this.http.get<CheckListDto>(`${this.apiUrl}/${id}`);
   }
 
-  getAllCheckLists(): Observable<CheckListDto[]> { return this.http.get<CheckListDto[]>(this.apiUrl); }
+  getAllCheckLists(): Observable<CheckListDto[]> {
+    return this.http.get<CheckListDto[]>(this.apiUrl);
+  }
 
   createCheckList(dto: CreateCheckListDto): Observable<CheckListDto> {
     return this.http.post<CheckListDto>(`${this.apiUrl}/with-etapes`, dto);
@@ -49,55 +50,59 @@ export class CheckListService {
     return this.http.put<CheckListDto>(`${this.apiUrl}/${id}`, dto);
   }
 
-  deleteCheckList(id: number): Observable<void> { return this.http.delete<void>(`${this.apiUrl}/${id}`); }
-
-  /** 1) Essaye de lire les “soumissions” (si ton API les expose) */
-  getChecklistSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
-    const paramsA = new HttpParams().set('checkListId', String(checklistId));
-    const tryA$ = this.http.get<FormSubmissionDto[]>(this.submissionsUrl, { params: paramsA })
-      .pipe(catchError(err => err?.status === 404 ? of([]) : throwError(() => err)));
-
-    // Variante paramètre différent (checklistId)
-    const paramsB = new HttpParams().set('checklistId', String(checklistId));
-    const tryB$ = this.http.get<FormSubmissionDto[]>(this.submissionsUrl, { params: paramsB })
-      .pipe(catchError(() => of([])));
-
-    // Variante RESTful: /CheckList/{id}/submissions
-    const tryC$ = this.http.get<FormSubmissionDto[]>(`${this.apiUrl}/${checklistId}/submissions`)
-      .pipe(catchError(() => of([])));
-
-    return tryA$.pipe(
-      switchMap(a => (a?.length ? of(a) : tryB$)),
-      switchMap(b => (b?.length ? of(b) : tryC$))
-    );
+  deleteCheckList(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
-  /** 2) Fallback : lire les “réponses courantes” question par question (ton JSON) */
+  // ===== Soumissions =====
+
+  /** Enregistrer une soumission (créera Id + date côté backend) */
+  submitChecklist(payload: FormResponseDto): Observable<FormSubmissionDto> {
+    return this.http.post<FormSubmissionDto>(`${this.formApi}/submit`, payload);
+  }
+
+  /** Lire les soumissions horodatées d’une checklist */
+getChecklistSubmissions(checklistId: number): Observable<FormSubmissionDto[]> {
+  const formApi = `${environment.apiUrl}/Form`;
+
+  const params = new HttpParams().set('checkListId', String(checklistId));
+  return this.http.get<FormSubmissionDto[]>(`${formApi}/submissions`, { params }).pipe(
+    // Écarter les soumissions sans réponses (comme id=1 dans ton exemple)
+    map(list => (list ?? []).filter(s => (s.reponses?.length ?? 0) > 0)),
+    // Trier de la plus récente à la plus ancienne
+    map(list =>
+      list.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())
+    )
+  );
+}
+
+
+  /** Fallback: lire les “réponses courantes” question par question si pas d’historique */
   getLatestAnswers(checklistId: number): Observable<QuestionDto[]> {
-    // Essaie 1: /Question/by-checklist/{id}
-    const tryA$ = this.http.get<QuestionDto[]>(`${environment.apiUrl}/Question/by-checklist/${checklistId}`)
+    const tryA$ = this.http
+      .get<QuestionDto[]>(`${environment.apiUrl}/Question/by-checklist/${checklistId}`)
       .pipe(catchError(() => of([])));
 
-    // Essaie 2: /Question?checkListId=...
     const params = new HttpParams().set('checkListId', String(checklistId));
-    const tryB$ = this.http.get<QuestionDto[]>(`${environment.apiUrl}/Question`, { params })
+    const tryB$ = this.http
+      .get<QuestionDto[]>(`${environment.apiUrl}/Question`, { params })
       .pipe(catchError(() => of([])));
 
-    // Essaie 3: /CheckList/{id}/questions
-    const tryC$ = this.http.get<QuestionDto[]>(`${this.apiUrl}/${checklistId}/questions`)
+    const tryC$ = this.http
+      .get<QuestionDto[]>(`${this.apiUrl}/${checklistId}/questions`)
       .pipe(catchError(() => of([])));
 
     return tryA$.pipe(
-      switchMap(a => (a?.length ? of(a) : tryB$)),
-      switchMap(b => (b?.length ? of(b) : tryC$))
+      switchMap(a => a?.length ? of(a) : tryB$),
+      switchMap(b => b?.length ? of(b) : tryC$)
     );
   }
 
-  /** 3) Agrégat : Checklist + Étapes + Questions + submissions[] (soumissions OU réponses courantes) */
+  /** Agrégat: Checklist + Étapes + Questions + submissions[] */
   getChecklistWithSubmissions(checklistId: number): Observable<AggregatedChecklistDto> {
     return this.getCheckList(checklistId).pipe(
       switchMap((cl) => {
-        // Squelette agrégé + index
+        // Squelette
         const aggregated: AggregatedChecklistDto = {
           id: cl.id,
           libelle: cl.libelle,
@@ -112,15 +117,18 @@ export class CheckListService {
           }))
         };
 
+        // Index questionId -> ref
         const qIndex = new Map<number, QuestionDto & { submissions: QuestionSubmission[] }>();
-        aggregated.etapes.forEach(et => et.questions.forEach(q => { if (q.id != null) qIndex.set(q.id, q); }));
+        aggregated.etapes.forEach(et =>
+          et.questions.forEach(q => { if (q.id != null) qIndex.set(q.id, q); })
+        );
 
         return forkJoin({
           subs: this.getChecklistSubmissions(checklistId).pipe(catchError(() => of([] as FormSubmissionDto[]))),
           answers: this.getLatestAnswers(checklistId).pipe(catchError(() => of([] as QuestionDto[])))
         }).pipe(
           map(({ subs, answers }) => {
-            // 3a) Injecte les soumissions (si présentes)
+            // Injecte les vraies soumissions
             if (subs?.length) {
               for (const s of subs) {
                 for (const r of (s.reponses || [] as QuestionResponseDto[])) {
@@ -136,16 +144,14 @@ export class CheckListService {
               }
             }
 
-            // 3b) Si aucune soumission trouvée, injecte les réponses courantes (fallback)
-            const hasAnySubmission = Array.from(qIndex.values()).some(q => q.submissions.length > 0);
-            if (!hasAnySubmission && answers?.length) {
+            // Fallback: pas d’historique → réponses courantes
+            const hasAny = Array.from(qIndex.values()).some(q => q.submissions.length > 0);
+            if (!hasAny && answers?.length) {
               for (const a of answers) {
                 if (!a?.id) continue;
                 const tgt = qIndex.get(a.id);
-                if (!tgt) continue;
-                const val = (a.reponse ?? '').trim();
-                if (!val) continue;
-                tgt.submissions.push({ reponse: val }); // pseudo-soumission
+                const val = (a?.reponse ?? '').trim();
+                if (tgt && val) tgt.submissions.push({ reponse: val });
               }
             }
 
