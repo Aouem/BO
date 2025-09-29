@@ -1,8 +1,12 @@
-// ...imports existants...
+// check-list-detail.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { CheckListService, AggregatedChecklistDto } from '../../services/check-list-service';
+
+type EtapeAgg = AggregatedChecklistDto['etapes'][number];
+type QuestionAgg = EtapeAgg['questions'][number];
+type SubmissionAgg = QuestionAgg['submissions'][number];
 
 @Component({
   selector: 'app-checklist-detail',
@@ -33,21 +37,25 @@ export class CheckListDetailComponent implements OnInit {
 
     this.checklists.getChecklistWithSubmissions(id).subscribe({
       next: (agg) => { this.agg = agg; this.loading = false; },
-      error: (err) => { console.error('Erreur checklist', err); this.errorMsg = 'Impossible de charger la checklist.'; this.loading = false; }
+      error: (err) => { 
+        console.error('Erreur checklist', err); 
+        this.errorMsg = 'Impossible de charger la checklist.'; 
+        this.loading = false; 
+      }
     });
   }
 
-  // ----- Résumé / comptages -----
+  // ------------------------------
+  // Résumé / comptages
+  // ------------------------------
   get hasRealSubmissions(): boolean {
     if (!this.agg) return false;
     return this.agg.etapes.some(et =>
-      et.questions.some(q => q.submissions?.some(s => s.submissionId != null))
+      et.questions.some(q => (q.submissions || []).some(s => s.submissionId != null))
     );
   }
 
   get headerCountLabel(): string {
-    // Si on a de "vraies" soumissions (avec submissionId), on parle de soumissions,
-    // sinon on parle de réponses (valeurs courantes).
     return this.hasRealSubmissions ? 'soumission(s)' : 'réponse(s)';
   }
 
@@ -57,24 +65,29 @@ export class CheckListDetailComponent implements OnInit {
     const submissionIds = new Set<number>();
     let pseudoCount = 0;
 
-    this.agg.etapes.forEach(et =>
-      et.questions.forEach(q => {
-        if (!q.submissions?.length) return;
-        // vraies soumissions
-        q.submissions.forEach(s => {
-          if (s.submissionId != null) submissionIds.add(s.submissionId);
-        });
-        // si uniquement pseudo-soumissions (pas d'id), on compte 1 par question
-        if (q.submissions.every(s => s.submissionId == null)) {
+    for (const et of this.agg.etapes) {
+      for (const q of et.questions) {
+        const subs = q.submissions || [];
+        if (!subs.length) continue;
+
+        let hasReal = false;
+        for (const s of subs) {
+          if (s.submissionId != null) {
+            hasReal = true;
+            submissionIds.add(s.submissionId);
+          }
+        }
+        if (!hasReal) {
+          // S'il n'y a que des réponses "sans id", on compte 1 par question
           pseudoCount += 1;
         }
-      })
-    );
+      }
+    }
 
     return submissionIds.size > 0 ? submissionIds.size : pseudoCount;
   }
 
-  // Résumé Oui/Non/N/A par question
+  // Pour information (si tu veux afficher un breakdown par question)
   summaryFor(question: { submissions: Array<{ reponse?: string }> }) {
     const res = { oui: 0, non: 0, na: 0 };
     for (const s of question.submissions || []) {
@@ -86,7 +99,9 @@ export class CheckListDetailComponent implements OnInit {
     return res;
   }
 
-  // ----- UI helpers -----
+  // ------------------------------
+  // Helpers UI
+  // ------------------------------
   badgeClass(val?: string) {
     const v = (val || '').trim();
     if (v === 'Oui') return 'badge bg-success';
@@ -95,14 +110,94 @@ export class CheckListDetailComponent implements OnInit {
     return 'badge bg-secondary';
   }
 
-  // Affiche un petit meta texte seulement si au moins une info est présente
-  // (id, auteur, date). Sinon on ne montre rien.
   hasMeta(s: { submissionId?: number; submittedBy?: string; submittedAt?: string }) {
     return !!(s.submissionId != null || s.submittedBy || s.submittedAt);
   }
 
-  // ----- trackBy -----
-  trackByEt = (_: number, et: any) => et.id ?? _;
-  trackByQ = (_: number, q: any) => q.id ?? _;
-  trackByS = (_: number, s: any) => s.submissionId ?? _; // pseudo-soumissions n'ont pas d'id
+  // ------------------------------
+  // Dernière réponse d'une question
+  // ------------------------------
+  latest(q: QuestionAgg): SubmissionAgg | null {
+    const arr = q.submissions || [];
+    if (!arr.length) return null;
+
+    // Trier par date si présente (desc)
+    const withDate = arr.some(s => !!s.submittedAt);
+    if (withDate) {
+      const clone = [...arr].sort((a, b) => {
+        const ta = a.submittedAt ? new Date(a.submittedAt).getTime() : -1;
+        const tb = b.submittedAt ? new Date(b.submittedAt).getTime() : -1;
+        return tb - ta; // plus récent en premier
+      });
+      return clone[0];
+    }
+
+    // Sinon: prendre le dernier élément saisi
+    return arr[arr.length - 1];
+  }
+
+  isLatest(q: QuestionAgg, val: 'Oui' | 'Non' | 'N/A'): boolean {
+    const last = this.latest(q);
+    if (!last || !last.reponse) return false;
+    const v = (last.reponse || '').trim().toUpperCase();
+    if (val === 'N/A') return v === 'N/A' || v === 'NA';
+    return v === val.toUpperCase();
+  }
+
+  // ------------------------------
+  // Aplatir toutes les soumissions
+  // ------------------------------
+  get flatSubmissions(): Array<{
+    etape: string;
+    question: string;
+    reponse: string;
+    submittedBy?: string;
+    submittedAt?: string;
+    submissionId?: number | null;
+  }> {
+    const rows: Array<{
+      etape: string; question: string; reponse: string;
+      submittedBy?: string; submittedAt?: string; submissionId?: number | null;
+    }> = [];
+
+    if (!this.agg) return rows;
+
+    for (const et of this.agg.etapes) {
+      for (const q of et.questions) {
+        for (const s of (q.submissions || [])) {
+          rows.push({
+            etape: et.nom,
+            question: q.texte,
+            reponse: s.reponse || '',
+            submittedBy: s.submittedBy,
+            submittedAt: s.submittedAt,
+            submissionId: s.submissionId ?? null
+          });
+        }
+      }
+    }
+
+    // Tri: plus récent -> plus ancien, puis alphabétique
+    rows.sort((a, b) => {
+      const ta = a.submittedAt ? new Date(a.submittedAt).getTime() : -1;
+      const tb = b.submittedAt ? new Date(b.submittedAt).getTime() : -1;
+      if (tb !== ta) return tb - ta;
+      const aKey = (a.etape + '|' + a.question).toLowerCase();
+      const bKey = (b.etape + '|' + b.question).toLowerCase();
+      return aKey.localeCompare(bKey);
+    });
+
+    return rows;
+  }
+
+  // ------------------------------
+  // trackBy
+  // ------------------------------
+  trackByEt = (_: number, et: EtapeAgg) => et.id ?? _;
+  trackByQ = (_: number, q: QuestionAgg) => q.id ?? _;
+  trackByS = (_: number, s: SubmissionAgg) => s.submissionId ?? _;
+  trackByFlat = (_: number, r: {
+    etape: string; question: string; reponse: string;
+    submittedAt?: string; submissionId?: number | null;
+  }) => (r.submissionId != null ? 's' + r.submissionId : `q:${r.etape}|${r.question}|${r.reponse}|${r.submittedAt ?? ''}`);
 }
