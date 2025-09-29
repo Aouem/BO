@@ -1,143 +1,200 @@
 <div class="checklists-container">
-  <!-- En-tête avec bouton de création -->
+  <!-- En-tête -->
   <div class="header-actions">
-    <h1>Mes Checklists</h1>
-    <button class="btn btn-primary" (click)="createNewChecklist()">
-      + Nouvelle Checklist
+    <h1>🎯 Checklist Chirurgicale</h1>
+    <button class="btn creative-btn gradient-btn" (click)="createNewChecklist()">
+      ✨ Nouvelle Checklist
     </button>
   </div>
 
-  <!-- Barre de recherche -->
+  <!-- Recherche -->
   <div class="search-container">
     <div class="search-box">
       <input 
         type="text" 
         class="form-control search-input" 
-        placeholder="🔍 Rechercher une checklist, étape ou question..."
+        placeholder="🔍 Rechercher une question ou une étape..."
         [(ngModel)]="searchTerm"
         (input)="filterChecklists()"
       />
-      <button 
-        *ngIf="searchTerm" 
-        class="btn btn-clear" 
-        (click)="clearSearch()"
-        title="Effacer la recherche"
-      >
+      <button *ngIf="searchTerm" class="btn btn-clear" (click)="clearSearch()">
         ✕
       </button>
-    </div>
-    <div class="search-info" *ngIf="searchTerm">
-      <span class="badge">{{ filteredChecklists.length }} résultat(s) trouvé(s)</span>
     </div>
   </div>
 
   <!-- Loading -->
   <div *ngIf="loading" class="loading-container">
     <div class="spinner"></div>
-    <p>Chargement des checklists...</p>
+    <p>Chargement des checklists chirurgicales...</p>
   </div>
 
-  <!-- Liste des checklists filtrées -->
-  <div *ngFor="let cl of filteredChecklists; let ci = index" class="checklist-block border p-3 mb-3 rounded">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <div class="checklist-header">
-        <h3 contenteditable="true" (blur)="onBlurLibelle($event, cl)">
-          {{ cl.libelle }}
-        </h3>
-        <div class="checklist-stats">
-          <span class="badge">{{ getTotalEtapes(cl) }} étape(s)</span>
-          <span class="badge">{{ getTotalQuestions(cl) }} question(s)</span>
-        </div>
+  <!-- Checklists -->
+  <div *ngFor="let cl of filteredChecklists" class="checklist-block">
+    
+    <!-- Header Checklist -->
+    <div class="checklist-header">
+      <textarea 
+        class="checklist-libelle"
+        [(ngModel)]="cl.libelle"
+        placeholder="Nom de la checklist chirurgicale"
+        rows="2"
+      ></textarea>
+      
+      <div class="checklist-stats">
+        <span class="badge">{{ getTotalEtapes(cl) }} phases</span>
+        <span class="badge">{{ getTotalQuestions(cl) }} vérifications</span>
       </div>
-      <div class="d-flex gap-2">
-        <!-- Bouton pour voir les détails -->
-        <button class="btn btn-info btn-sm" (click)="viewChecklistDetail(cl.id!)" 
-                title="Voir la checklist">
+
+      <div class="action-buttons">
+        <button class="btn creative-btn btn-info" (click)="viewChecklistDetail(cl.id!)">
           👁️ Voir
         </button>
-        <!-- Bouton pour éditer -->
-        <button class="btn btn-warning btn-sm" (click)="editChecklist(cl.id!)" 
-                title="Modifier la checklist">
-            ✏️ Modifier
+        <button class="btn creative-btn btn-warning" (click)="editChecklist(cl.id!)">
+          ✏️ Modifier
         </button>
-        <button class="btn btn-success btn-sm" (click)="saveChecklist(cl)" 
-                title="Sauvegarder les modifications">
-            💾 Sauvegarder
+        <button class="btn creative-btn btn-success" (click)="saveChecklist(cl)">
+          💾 Sauvegarder
         </button>
-        <button class="btn btn-danger btn-sm" (click)="deleteChecklist(cl)" 
-                title="Supprimer la checklist">
-            🗑️ Supprimer
+        <button class="btn creative-btn btn-danger" (click)="deleteChecklist(cl)">
+          🗑️ Supprimer
         </button>
       </div>
     </div>
 
-    <div *ngFor="let etape of cl.etapes; let ei = index" class="etape-block border p-2 mb-2 rounded">
-      <div class="d-flex justify-content-between mb-1">
-        <input type="text" class="form-control me-2" placeholder="Nom de l'étape" 
-               [(ngModel)]="etape.nom" />
-        <button class="btn btn-danger btn-sm" (click)="removeEtape(cl, ei)">
-          Supprimer étape
+    <!-- Étapes avec couleurs distinctives -->
+    <div *ngFor="let etape of cl.etapes; let ei = index" 
+         class="etape-block"
+         [class.avant-intervention]="isAvantIntervention(etape.nom)"
+         [class.pendant-intervention]="isPendantIntervention(etape.nom)"
+         [class.apres-intervention]="isApresIntervention(etape.nom)"
+         [class.controle-final]="isControleFinal(etape.nom)">
+      
+      <!-- Indicateur d'étape -->
+      <div class="etape-indicator" 
+           [class.avant]="isAvantIntervention(etape.nom)"
+           [class.pendant]="isPendantIntervention(etape.nom)"
+           [class.apres]="isApresIntervention(etape.nom)"
+           [class.controle]="isControleFinal(etape.nom)">
+        {{ ei + 1 }}
+      </div>
+
+      <!-- Badge type d'étape -->
+      <div class="etape-badge"
+           [class.avant]="isAvantIntervention(etape.nom)"
+           [class.pendant]="isPendantIntervention(etape.nom)"
+           [class.apres]="isApresIntervention(etape.nom)"
+           [class.controle]="isControleFinal(etape.nom)">
+        {{ getEtapeType(etape.nom) }}
+      </div>
+
+      <div class="etape-header">
+        <textarea 
+          class="etape-title"
+          [class.avant-intervention]="isAvantIntervention(etape.nom)"
+          [class.pendant-intervention]="isPendantIntervention(etape.nom)"
+          [class.apres-intervention]="isApresIntervention(etape.nom)"
+          [class.controle-final]="isControleFinal(etape.nom)"
+          [(ngModel)]="etape.nom"
+          placeholder="Nom de la phase chirurgicale"
+          rows="2"
+        ></textarea>
+        <button class="btn creative-btn btn-danger" (click)="removeEtape(cl, ei)">
+          🗑️
         </button>
       </div>
 
-      <div *ngFor="let q of etape.questions; let qi = index" class="question-block border p-2 mb-2 rounded">
-        <input type="text" class="form-control mb-1" placeholder="Texte de la question" 
-               [(ngModel)]="q.texte" />
+      <!-- Questions sans scroll -->
+      <div *ngFor="let q of etape.questions; let qi = index" class="question-block">
+        <div class="question-content-full">
+          
+          <!-- Question avec affichage complet sans scroll -->
+          <textarea 
+            class="question-text-field auto-expand"
+            [class.long-question]="isLongQuestion(q.texte)"
+            [class.confirmation-question]="isConfirmationQuestion(q.texte)"
+            [class.important-question]="isImportantQuestion(q.texte)"
+            [(ngModel)]="q.texte"
+            placeholder="💡 Saisir la question de vérification..."
+            (input)="onTextareaResize($event)"
+            rows="3"
+          >{{ q.texte }}</textarea>
 
-        <select #typeSelect class="form-select mb-1" [ngModel]="q.type" 
-                (ngModelChange)="updateQuestionTypeSafe(q, $event)">
-          <option value="Boolean">Oui / Non</option>
-          <option value="BooleanNA">Oui / Non / N/A</option>
-          <option value="Texte">Texte</option>
-          <option value="Liste">Liste</option>
-        </select>
+          <div class="selects-container">
+            <select 
+              class="creative-select"
+              [ngModel]="q.type" 
+              (ngModelChange)="updateQuestionTypeSafe(q, $event)"
+            >
+              <option value="Boolean">✅ Oui/Non</option>
+              <option value="BooleanNA">🔘 Oui/Non/N-A</option>
+              <option value="Texte">📝 Texte libre</option>
+              <option value="Liste">📋 Liste déroulante</option>
+            </select>
 
-        <select *ngIf="q.type === 'Boolean' || q.type === 'BooleanNA'" class="form-select mb-1" 
-                [(ngModel)]="q.reponse">
-          <option value="">-- Sélectionner --</option>
-          <option *ngFor="let option of getBooleanOptions(q)" [value]="option">
-            {{ option }}
-          </option>
-        </select>
-
-        <div *ngIf="q.type === 'Liste'">
-          <div *ngFor="let o of q.options; let oi = index" class="d-flex gap-2 mb-1">
-            <input type="text" class="form-control" [(ngModel)]="o.valeur" 
-                   placeholder="Valeur option" />
-            <button type="button" class="btn btn-danger btn-sm" 
-                    (click)="removeOption(q, oi)">Supprimer</button>
+            <select 
+              *ngIf="q.type === 'Boolean' || q.type === 'BooleanNA'" 
+              class="creative-select"
+              [(ngModel)]="q.reponse"
+            >
+              <option value="">🎯 Sélectionner</option>
+              <option *ngFor="let option of getBooleanOptions(q)" [value]="option">
+                {{ option }}
+              </option>
+            </select>
           </div>
-          <button type="button" class="btn btn-secondary btn-sm" 
-                  (click)="addOption(q)">Ajouter option</button>
-        </div>
 
-        <button type="button" class="btn btn-warning btn-sm mt-1" 
-                (click)="removeQuestion(etape, qi)">Supprimer question</button>
+          <!-- Champ texte pour réponses longues -->
+          <textarea 
+            *ngIf="q.type === 'Texte'"
+            class="creative-select auto-expand"
+            [(ngModel)]="q.reponse"
+            placeholder="✍️ Saisir la réponse ou les observations..."
+            (input)="onTextareaResize($event)"
+            rows="4"
+          ></textarea>
+
+          <!-- Options pour listes déroulantes -->
+          <div *ngIf="q.type === 'Liste'" class="options-container">
+            <div *ngFor="let o of q.options; let oi = index" class="option-row">
+              <textarea 
+                class="option-field auto-expand"
+                [(ngModel)]="o.valeur"
+                placeholder="📌 Option de réponse..."
+                (input)="onTextareaResize($event)"
+                rows="2"
+              ></textarea>
+              <button class="btn creative-btn btn-danger" (click)="removeOption(q, oi)">
+                🗑️
+              </button>
+            </div>
+            <button class="btn creative-btn btn-secondary" (click)="addOption(q)">
+              ➕ Ajouter une option
+            </button>
+          </div>
+
+          <button class="btn creative-btn btn-warning" (click)="removeQuestion(etape, qi)">
+            🗑️ Supprimer cette vérification
+          </button>
+        </div>
       </div>
 
-      <button type="button" class="btn btn-primary btn-sm mt-2" 
-              (click)="addQuestion(etape)">Ajouter une question</button>
+      <button class="btn creative-btn gradient-btn" (click)="addQuestion(etape)">
+        ❓ Ajouter une vérification
+      </button>
     </div>
 
-    <button type="button" class="btn btn-primary btn-sm mt-2" 
-            (click)="addEtape(cl)">Ajouter une étape</button>
+    <button class="btn creative-btn gradient-btn" (click)="addEtape(cl)">
+      📋 Ajouter une phase chirurgicale
+    </button>
   </div>
 
-  <!-- Message si aucune checklist après recherche -->
+  <!-- État vide -->
   <div *ngIf="!loading && filteredChecklists.length === 0" class="empty-state">
-    <div *ngIf="searchTerm; else noChecklists">
-      <h2>Aucun résultat trouvé</h2>
-      <p>Aucune checklist ne correspond à votre recherche "{{ searchTerm }}"</p>
-      <button class="btn btn-secondary" (click)="clearSearch()">
-        Afficher toutes les checklists
-      </button>
-    </div>
-    <ng-template #noChecklists>
-      <h2>Aucune checklist trouvée</h2>
-      <p>Commencez par créer votre première checklist !</p>
-      <button class="btn btn-primary" (click)="createNewChecklist()">
-        Créer une checklist
-      </button>
-    </ng-template>
+    <h2>{{ searchTerm ? 'Aucune vérification trouvée' : 'Aucune checklist chirurgicale' }}</h2>
+    <p>Créez votre première checklist pour les procédures chirurgicales</p>
+    <button class="btn creative-btn gradient-btn" (click)="createNewChecklist()">
+      ✨ Créer une checklist chirurgicale
+    </button>
   </div>
 </div>

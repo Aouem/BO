@@ -32,12 +32,17 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<BOContext>();
-        
+
         // Appliquer les migrations automatiquement
         context.Database.Migrate();
-        
+
         // Seed des données
         DataSeeder.SeedCheckListSecuritePatient(context);
+        DataSeeder.SeedCheckListAnesthesie(context);
+        DataSeeder.SeedCheckListHygiene(context);
+        DataSeeder.SeedCheckListTransfusion(context);
+        DataSeeder.SeedCheckListRadioprotection(context);
+        DataSeeder.SeedCheckListLogistique(context);
         DataSeeder.SeedPersonnel(context);
     }
     catch (Exception ex)

@@ -11,138 +11,126 @@ namespace BOAPI.Data
                 serviceProvider.GetRequiredService<DbContextOptions<BOContext>>()))
             {
                 SeedCheckListSecuritePatient(context);
+                SeedCheckListAnesthesie(context);
+                SeedCheckListHygiene(context);
+                SeedCheckListTransfusion(context);
+                SeedCheckListRadioprotection(context);
+                SeedCheckListLogistique(context);
+                SeedPersonnel(context);
             }
         }
 
+        // ✅ 1. CheckList Sécurité Patient (ajoute ou met à jour)
         public static void SeedCheckListSecuritePatient(BOContext context)
         {
-            // Vérifier si la checklist existe déjà
             var existingCheckList = context.CheckLists
                 .Include(c => c.Etapes)
                     .ThenInclude(e => e.Questions)
-                        .ThenInclude(q => q.Options)
-                .FirstOrDefault(c => c.Libelle.Contains("SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE"));
+                .FirstOrDefault(c => c.Libelle == "CHECK-LIST « SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE »");
 
-            if (existingCheckList != null)
+            if (existingCheckList == null)
             {
-                Console.WriteLine("CheckList 'Sécurité du Patient' existe déjà. Skip du seed.");
-                return;
+                // Création si elle n’existe pas
+                existingCheckList = new CheckList
+                {
+                    Libelle = "CHECK-LIST « SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE »",
+                    Version = "2018",
+                    Description = "Vérifier ensemble pour décider",
+                    DateCreation = DateTime.UtcNow,
+                    EstActive = true,
+                    Etapes = new List<Etape>()
+                };
+
+                context.CheckLists.Add(existingCheckList);
             }
 
-            Console.WriteLine("Création de la CheckList 'Sécurité du Patient'...");
+            // Mise à jour des propriétés principales
+            existingCheckList.Version = "2018";
+            existingCheckList.Description = "Vérifier ensemble pour décider";
+            existingCheckList.EstActive = true;
+
+            // On vide les étapes/anciennes questions pour repartir propre
+            existingCheckList.Etapes.Clear();
+
+            existingCheckList.Etapes = new List<Etape>
+            {
+                new Etape
+                {
+                    Nom = "AVANT INDUCTION ANESTHÉSIQUE - Temps de pause avant anesthésie",
+                    Ordre = 0,
+                    Questions = new List<Question>
+                    {
+                        new Question { Texte = "L'identité du patient est correcte", Type = QuestionType.Boolean, EstObligatoire = true },
+                        new Question { Texte = "L'autorisation d'opérer est signée", Type = QuestionType.Boolean, EstObligatoire = true },
+                        new Question { Texte = "Intervention et site opératoire confirmés", Type = QuestionType.Boolean, EstObligatoire = true },
+                        new Question { Texte = "Mode d'installation cohérent et sûr", Type = QuestionType.Boolean, EstObligatoire = true },
+                        new Question { Texte = "Préparation cutanée documentée", Type = QuestionType.Boolean, EstObligatoire = true },
+                        new Question { Texte = "Matériel vérifié et adapté", Type = QuestionType.Boolean, EstObligatoire = true },
+                        new Question { Texte = "Risque allergique, inhalation, saignement ?", Type = QuestionType.BooleanNA }
+                    }
+                },
+                new Etape
+                {
+                    Nom = "AVANT INTERVENTION CHIRURGICALE - Time-out",
+                    Ordre = 1,
+                    Questions = new List<Question>
+                    {
+                        new Question { Texte = "Vérification ultime réalisée", Type = QuestionType.Boolean, EstObligatoire = true },
+                        new Question { Texte = "Partage des informations essentielles", Type = QuestionType.Boolean, EstObligatoire = true },
+                        new Question { Texte = "Antibiothérapie effectuée", Type = QuestionType.Boolean, EstObligatoire = true },
+                        new Question { Texte = "Préparation du champ opératoire correcte", Type = QuestionType.Boolean, EstObligatoire = true }
+                    }
+                },
+                new Etape
+                {
+                    Nom = "APRÈS INTERVENTION - Pause avant sortie",
+                    Ordre = 2,
+                    Questions = new List<Question>
+                    {
+                        new Question { Texte = "Confirmation orale par l'équipe", Type = QuestionType.Boolean, EstObligatoire = true },
+                        new Question { Texte = "Prescriptions post-opératoires complètes", Type = QuestionType.Boolean, EstObligatoire = true }
+                    }
+                }
+            };
+
+            context.SaveChanges();
+        }
+
+        // ✅ 2. CheckList Anesthésie
+        public static void SeedCheckListAnesthesie(BOContext context)
+        {
+            if (context.CheckLists.Any(c => c.Libelle.Contains("ANESTHÉSIE")))
+                return;
 
             var checkList = new CheckList
             {
-                Libelle = "CHECK-LIST « SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE »",
+                Libelle = "CHECK-LIST « ANESTHÉSIE »",
                 Version = "2018",
-                Description = "Vérifier ensemble pour décider",
+                Description = "Sécurité anesthésique au bloc opératoire",
                 DateCreation = DateTime.UtcNow,
                 EstActive = true,
                 Etapes = new List<Etape>
                 {
-                    // Étape 1: AVANT INDUCTION ANESTHÉSIQUE
                     new Etape
                     {
-                        Nom = "AVANT INDUCTION ANESTHÉSIQUE - Temps de pause avant anesthésie",
+                        Nom = "VÉRIFICATION DU MATÉRIEL",
                         Ordre = 0,
                         Questions = new List<Question>
                         {
-                            new Question 
-                            { 
-                                Texte = "L'identité du patient est correcte", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            },
-                            new Question 
-                            { 
-                                Texte = "L'autorisation d'opérer est signée par les parents ou le représentant légal", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            },
-                            new Question 
-                            { 
-                                Texte = "L'intervention et le site opératoire sont confirmés : idéalement par le patient et, dans tous les cas, par le dossier ou procédure spécifique - la documentation clinique et sans clinique nécessaire est disponible en salle", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            },
-                            new Question 
-                            { 
-                                Texte = "Le mode d'installation est connu de l'équipe en salle, cohérent avec le site / l'intervention et non dangereux pour le patient", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            },
-                            new Question 
-                            { 
-                                Texte = "La préparation cutanée de l'opéré est documentée dans la fiche de liaison service / bloc opératoire (ou autre procédure en œuvre dans l'établissement)", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            },
-                            new Question 
-                            { 
-                                Texte = "L'équipement / le matériel nécessaires pour l'intervention sont vérifiés et adaptés au poids et à la taille du patient - pour la partie chirurgicale - pour la partie anesthésique", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            },
-                            new Question 
-                            { 
-                                Texte = "Le patient présente-t-il un : - risque allergique - risque d'inhalation, de difficulté d'intubation ou de ventilation au masque - risque de saignement important", 
-                                Type = QuestionType.BooleanNA,
-                                EstObligatoire = false
-                            }
+                            new Question { Texte = "Machine d’anesthésie fonctionnelle ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Système d’aspiration vérifié ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Monitoring prêt ?", Type = QuestionType.Boolean, EstObligatoire = true }
                         }
                     },
-                    // Étape 2: AVANT INTERVENTION CHIRURGICALE
                     new Etape
                     {
-                        Nom = "AVANT INTERVENTION CHIRURGICALE - Temps de pause avant incision (appelé aussi time-out)",
+                        Nom = "VÉRIFICATION PATIENT",
                         Ordre = 1,
                         Questions = new List<Question>
                         {
-                            new Question 
-                            { 
-                                Texte = "Vérification « ultime » réalisée au sein de l'équipe en présence des chirurgiens(s), anesthésiste(s), IADE-BODEF/IDE - identité patient confirmée - intervention prévue confirmée - site opératoire confirmé - installation correcte confirmée - documents nécessaires disponibles (notamment imagerie)", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            },
-                            new Question 
-                            { 
-                                Texte = "Partage des informations essentielles oralement au sein de l'équipe sur les éléments à risque / étapes critiques de l'intervention (time-out) - sur le plan chirurgical - (temps opératoire difficile, points spécifiques de l'opération, identification des matériels nécessaires, confirmation de leur opérationnalité, etc.) - sur le plan anesthésique", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            },
-                            new Question 
-                            { 
-                                Texte = "L'antibiothérapie a été effectuée selon les recommandations et protocoles en vigueur dans l'établissement", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            },
-                            new Question 
-                            { 
-                                Texte = "La préparation du champ opératoire est réalisée selon le protocole en vigueur dans l'établissement", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            }
-                        }
-                    },
-                    // Étape 3: APRÈS INTERVENTION
-                    new Etape
-                    {
-                        Nom = "APRÈS INTERVENTION - Pause avant sortie de salle d'opération",
-                        Ordre = 2,
-                        Questions = new List<Question>
-                        {
-                            new Question 
-                            { 
-                                Texte = "Confirmation orale par le personnel auprès de l'équipe : - de l'intervention réalisée - du compte final correct - des compresses, aiguilles, instruments, etc. - de l'étiquetage des prélèvements, pièces opératoires, etc. - si des événements indésirables ou porteurs de risques médicaux sont survenus : ont-ils fait l'objet d'un signalement / déclaration ?", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            },
-                            new Question 
-                            { 
-                                Texte = "Les prescriptions et la surveillance post-opératoires (y compris les seuils d'alerte spécifiques) sont faites complètement par l'équipe chirurgicale et anesthésique et adaptées à l'âge, au poids et à la taille du patient", 
-                                Type = QuestionType.Boolean,
-                                EstObligatoire = true
-                            }
+                            new Question { Texte = "Voie aérienne préparée ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Voie veineuse posée ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Allergies connues vérifiées ?", Type = QuestionType.Boolean, EstObligatoire = true }
                         }
                     }
                 }
@@ -150,11 +138,141 @@ namespace BOAPI.Data
 
             context.CheckLists.Add(checkList);
             context.SaveChanges();
-
-            Console.WriteLine("CheckList 'Sécurité du Patient' créée avec succès !");
         }
 
-        // Méthode pour seed des personnels de test
+        // ✅ 3. CheckList Hygiène
+        public static void SeedCheckListHygiene(BOContext context)
+        {
+            if (context.CheckLists.Any(c => c.Libelle.Contains("HYGIÈNE")))
+                return;
+
+            var checkList = new CheckList
+            {
+                Libelle = "CHECK-LIST « HYGIÈNE & ASEPSIE »",
+                Version = "2018",
+                Description = "Prévention des infections au bloc",
+                DateCreation = DateTime.UtcNow,
+                EstActive = true,
+                Etapes = new List<Etape>
+                {
+                    new Etape
+                    {
+                        Nom = "AVANT L’INTERVENTION",
+                        Ordre = 0,
+                        Questions = new List<Question>
+                        {
+                            new Question { Texte = "Lavage chirurgical effectué ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Tenue et gants stériles portés ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Stérilisation du matériel vérifiée ?", Type = QuestionType.Boolean, EstObligatoire = true }
+                        }
+                    }
+                }
+            };
+
+            context.CheckLists.Add(checkList);
+            context.SaveChanges();
+        }
+
+        // ✅ 4. CheckList Transfusion
+        public static void SeedCheckListTransfusion(BOContext context)
+        {
+            if (context.CheckLists.Any(c => c.Libelle.Contains("TRANSFUSION")))
+                return;
+
+            var checkList = new CheckList
+            {
+                Libelle = "CHECK-LIST « TRANSFUSION »",
+                Version = "2018",
+                Description = "Sécurité transfusionnelle",
+                DateCreation = DateTime.UtcNow,
+                EstActive = true,
+                Etapes = new List<Etape>
+                {
+                    new Etape
+                    {
+                        Nom = "VÉRIFICATION AVANT TRANSFUSION",
+                        Ordre = 0,
+                        Questions = new List<Question>
+                        {
+                            new Question { Texte = "Identité patient confirmée ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Concordance du groupe sanguin vérifiée ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Compatibilité croisée effectuée ?", Type = QuestionType.Boolean, EstObligatoire = true }
+                        }
+                    }
+                }
+            };
+
+            context.CheckLists.Add(checkList);
+            context.SaveChanges();
+        }
+
+        // ✅ 5. CheckList Radioprotection
+        public static void SeedCheckListRadioprotection(BOContext context)
+        {
+            if (context.CheckLists.Any(c => c.Libelle.Contains("RADIOPROTECTION")))
+                return;
+
+            var checkList = new CheckList
+            {
+                Libelle = "CHECK-LIST « RADIOPROTECTION »",
+                Version = "2018",
+                Description = "Protection contre l’irradiation",
+                DateCreation = DateTime.UtcNow,
+                EstActive = true,
+                Etapes = new List<Etape>
+                {
+                    new Etape
+                    {
+                        Nom = "VÉRIFICATION AVANT EXPOSITION",
+                        Ordre = 0,
+                        Questions = new List<Question>
+                        {
+                            new Question { Texte = "Équipements plombés portés ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Dosimètres portés ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Signalisation de la radioscopie activée ?", Type = QuestionType.Boolean, EstObligatoire = true }
+                        }
+                    }
+                }
+            };
+
+            context.CheckLists.Add(checkList);
+            context.SaveChanges();
+        }
+
+        // ✅ 6. CheckList Logistique
+        public static void SeedCheckListLogistique(BOContext context)
+        {
+            if (context.CheckLists.Any(c => c.Libelle.Contains("LOGISTIQUE")))
+                return;
+
+            var checkList = new CheckList
+            {
+                Libelle = "CHECK-LIST « LOGISTIQUE & MATÉRIEL »",
+                Version = "2018",
+                Description = "Disponibilité et fonctionnement du matériel",
+                DateCreation = DateTime.UtcNow,
+                EstActive = true,
+                Etapes = new List<Etape>
+                {
+                    new Etape
+                    {
+                        Nom = "VÉRIFICATION MATÉRIEL",
+                        Ordre = 0,
+                        Questions = new List<Question>
+                        {
+                            new Question { Texte = "Aspiration fonctionnelle ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Bistouri électrique testé ?", Type = QuestionType.Boolean, EstObligatoire = true },
+                            new Question { Texte = "Lampe scialytique fonctionnelle ?", Type = QuestionType.Boolean, EstObligatoire = true }
+                        }
+                    }
+                }
+            };
+
+            context.CheckLists.Add(checkList);
+            context.SaveChanges();
+        }
+
+        // ✅ Seed Personnel (une seule fois)
         public static void SeedPersonnel(BOContext context)
         {
             if (!context.Personnels.Any())
@@ -169,8 +287,6 @@ namespace BOAPI.Data
 
                 context.Personnels.AddRange(personnels);
                 context.SaveChanges();
-
-                Console.WriteLine("Personnels de test créés avec succès !");
             }
         }
     }

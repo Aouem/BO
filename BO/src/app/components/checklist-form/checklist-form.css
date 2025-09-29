@@ -354,3 +354,33 @@ button:hover {
     padding: 1.5rem;
   }
 }
+
+
+/* Ajouter à la fin de checklist-form.css les mêmes styles adaptatifs */
+
+.form-control, .form-select {
+  min-width: 200px;
+  width: auto;
+  resize: horizontal;
+  overflow: auto;
+}
+
+input[type="text"].form-control {
+  min-width: 250px;
+  width: auto;
+  max-width: 100%;
+}
+
+.content-editable-field {
+  display: inline-block;
+  min-width: 200px;
+  width: auto;
+  max-width: 100%;
+  padding: 0.5rem 1rem;
+  border: 2px dashed transparent;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  cursor: text;
+}
+
+/* ... (reprendre tous les styles adaptatifs du premier CSS) ... */
