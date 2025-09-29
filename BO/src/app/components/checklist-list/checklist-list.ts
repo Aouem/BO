@@ -2,7 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { CheckListService, CheckListDto, CreateCheckListDto } from '../../services/check-list-service';
+import { CheckListService} from '../../services/check-list-service';
+import { CheckListDto, CreateCheckListDto } from '../../models';
 
 // --- Interfaces frontend ---
 interface QuestionFrontend {
@@ -182,67 +183,72 @@ export class CheckListListComponent implements OnInit {
   }
 
   // --- Sauvegarder checklist ---
-  saveChecklist(checklist: CheckListFrontend) {
-    const payload: CreateCheckListDto = {
-      libelle: checklist.libelle,
-      etapes: checklist.etapes.map(e => ({
-        nom: e.nom,
-        questions: e.questions.map(q => ({
-          texte: q.texte,
-          type: q.type,
-          options: q.options.map(o => ({
-            valeur: o.valeur
-          }))
-        }))
+// --- Sauvegarder checklist ---
+saveChecklist(checklist: CheckListFrontend) {
+  // Préparer le payload pour CREATE (nouvelle checklist)
+  const createPayload: CreateCheckListDto = {
+    libelle: checklist.libelle,
+    etapes: checklist.etapes.map(e => ({
+      nom: e.nom,
+      questions: e.questions.map(q => ({
+        texte: q.texte,
+        type: q.type,
+        options: q.options.map(o => ({
+          valeur: o.valeur
+        })),
+        reponse: q.reponse || undefined // Convertir null en undefined
       }))
-    };
+    }))
+  };
 
-    if (checklist.id && checklist.id > 0) {
-      this.checklistService.updateCheckList(checklist.id, payload).subscribe({
-        next: (res: CheckListDto) => {
-          console.log('Checklist mise à jour avec succès', res);
-          
-          const index = this.checklists.findIndex(cl => cl.id === checklist.id);
-          if (index !== -1) {
-            this.checklists[index] = {
-              ...this.checklists[index],
-              libelle: res.libelle,
-              etapes: res.etapes.map(e => ({
-                id: e.id,
-                nom: e.nom,
-                questions: e.questions.map(q => ({
-                  id: q.id,
-                  texte: q.texte,
-                  type: q.type as QuestionFrontend['type'],
-                  options: q.options.map(o => ({ id: o.id, valeur: o.valeur })),
-                  reponse: ''
-                }))
+  if (checklist.id && checklist.id > 0) {
+    // ✅ CORRECTION : Pour UPDATE, utiliser CreateCheckListDto avec l'ID dans l'URL
+    this.checklistService.updateCheckList(checklist.id, createPayload).subscribe({
+      next: (res: CheckListDto) => {
+        console.log('Checklist mise à jour avec succès', res);
+        
+        const index = this.checklists.findIndex(cl => cl.id === checklist.id);
+        if (index !== -1) {
+          this.checklists[index] = {
+            ...this.checklists[index],
+            libelle: res.libelle,
+            etapes: res.etapes.map(e => ({
+              id: e.id,
+              nom: e.nom,
+              questions: e.questions.map(q => ({
+                id: q.id,
+                texte: q.texte,
+                type: q.type as QuestionFrontend['type'],
+                options: q.options.map(o => ({ id: o.id, valeur: o.valeur })),
+                reponse: ''
               }))
-            };
-            this.filteredChecklists = [...this.checklists];
-          }
-          
-          alert('Checklist mise à jour avec succès !');
-        },
-        error: (err) => {
-          console.error('Erreur lors de la mise à jour:', err);
-          alert('Erreur lors de la mise à jour de la checklist');
+            }))
+          };
+          this.filteredChecklists = [...this.checklists];
         }
-      });
-    } else {
-      this.checklistService.createCheckList(payload).subscribe({
-        next: (res: CheckListDto) => {
-          console.log('Checklist créée avec succès', res);
-          this.loadChecklists();
-          alert('Checklist créée avec succès !');
-        },
-        error: (err) => {
-          console.error('Erreur lors de la création:', err);
-          alert('Erreur lors de la création de la checklist');
-        }
-      });
-    }
+        
+        alert('Checklist mise à jour avec succès !');
+      },
+      error: (err) => {
+        console.error('Erreur lors de la mise à jour:', err);
+        alert('Erreur lors de la mise à jour de la checklist');
+      }
+    });
+  } else {
+    // Pour CREATE, utiliser directement createPayload
+    this.checklistService.createCheckList(createPayload).subscribe({
+      next: (res: CheckListDto) => {
+        console.log('Checklist créée avec succès', res);
+        this.loadChecklists();
+        alert('Checklist créée avec succès !');
+      },
+      error: (err) => {
+        console.error('Erreur lors de la création:', err);
+        alert('Erreur lors de la création de la checklist');
+      }
+    });
   }
+}
 
   // --- Nouveau handler pour contenteditable ---
   onBlurLibelle(event: Event, cl: any) {

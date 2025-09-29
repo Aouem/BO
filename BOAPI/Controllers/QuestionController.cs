@@ -17,69 +17,92 @@ namespace BOAPI.Controllers
             _context = context;
         }
 
-        // GET: api/Question
+        // 🔹 GET: api/Question - toutes les questions
         [HttpGet]
         public async Task<ActionResult<IEnumerable<QuestionDto>>> GetAll()
         {
             var questions = await _context.Questions
                                           .Include(q => q.Options)
+                                          .Include(q => q.Etape)
+                                              .ThenInclude(e => e.CheckList)
+                                          .AsSplitQuery()
+                                          .ToListAsync();
+
+            return Ok(questions.Select(q => MapToDto(q)));
+        }
+
+        // 🔹 GET: api/Question/{id} - question par ID
+        [HttpGet("{id}")]
+        public async Task<ActionResult<QuestionDto>> GetById(int id)
+        {
+            var question = await _context.Questions
+                                         .Include(q => q.Options)
+                                         .Include(q => q.Etape)
+                                             .ThenInclude(e => e.CheckList)
+                                         .FirstOrDefaultAsync(q => q.Id == id);
+
+            if (question == null) return NotFound();
+
+            return Ok(MapToDto(question));
+        }
+
+        // 🔹 GET: api/Question/by-checklist/5 - questions par checklist
+        [HttpGet("by-checklist/{checklistId}")]
+        public async Task<ActionResult<IEnumerable<QuestionDto>>> GetByChecklist(int checklistId)
+        {
+            var questions = await _context.Questions
+                                          .Include(q => q.Options)
+                                          .Include(q => q.Etape)
+                                          .Where(q => q.Etape.CheckListId == checklistId)
+                                          .AsSplitQuery()
+                                          .ToListAsync();
+
+            return Ok(questions.Select(q => MapToDto(q)));
+        }
+
+        // 🔹 GET: api/Question/by-etape/5 - questions par étape
+        [HttpGet("by-etape/{etapeId}")]
+        public async Task<ActionResult<IEnumerable<QuestionDto>>> GetByEtape(int etapeId)
+        {
+            var questions = await _context.Questions
+                                          .Include(q => q.Options)
+                                          .Include(q => q.Etape)
+                                              .ThenInclude(e => e.CheckList)
+                                          .Where(q => q.EtapeId == etapeId)
+                                          .AsSplitQuery()
                                           .ToListAsync();
 
             var result = questions.Select(q => new QuestionDto
             {
                 Id = q.Id,
                 Texte = q.Texte,
-                Type = q.Type.ToString(), // Conversion enum -> string
-                Options = q.Options.Select(o => new ResponseOptionDto
+                Type = q.Type.ToString(),
+                Options = q.Options?.Select(o => new ResponseOptionDto
                 {
                     Id = o.Id,
                     Valeur = o.Valeur
-                }).ToList(),
-                Reponse = q.Reponse
-            }).ToList();
+                }).ToList() ?? new List<ResponseOptionDto>(),
+                Reponse = q.Reponse,
+                EtapeId = q.EtapeId,
+                CheckListId = q.Etape.CheckListId,
+                CheckListLibelle = q.Etape.CheckList?.Libelle ?? ""
+            });
 
             return Ok(result);
         }
 
-        // GET: api/Question/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<QuestionDto>> GetById(int id)
-        {
-            var question = await _context.Questions
-                                         .Include(q => q.Options)
-                                         .FirstOrDefaultAsync(q => q.Id == id);
-
-            if (question == null) return NotFound();
-
-            var dto = new QuestionDto
-            {
-                Id = question.Id,
-                Texte = question.Texte,
-                Type = question.Type.ToString(),
-                Options = question.Options.Select(o => new ResponseOptionDto
-                {
-                    Id = o.Id,
-                    Valeur = o.Valeur
-                }).ToList(),
-                Reponse = question.Reponse
-            };
-
-            return Ok(dto);
-        }
-
-        // POST: api/Question
+        // 🔹 POST: api/Question
         [HttpPost]
         public async Task<ActionResult<QuestionDto>> Create(QuestionDto dto)
         {
             var question = new Question
             {
                 Texte = dto.Texte,
-                Type = Enum.Parse<QuestionType>(dto.Type, true), // string -> enum
-                Options = dto.Options?.Select(o => new ResponseOption
-                {
-                    Valeur = o.Valeur
-                }).ToList() ?? new List<ResponseOption>(),
-                Reponse = dto.Reponse
+                Type = Enum.Parse<QuestionType>(dto.Type, true),
+                Options = dto.Options?.Select(o => new ResponseOption { Valeur = o.Valeur }).ToList()
+                          ?? new List<ResponseOption>(),
+                Reponse = dto.Reponse,
+                EtapeId = dto.EtapeId
             };
 
             _context.Questions.Add(question);
@@ -89,7 +112,7 @@ namespace BOAPI.Controllers
             return CreatedAtAction(nameof(GetById), new { id = question.Id }, dto);
         }
 
-        // PUT: api/Question/5
+        // 🔹 PUT: api/Question/5
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, QuestionDto dto)
         {
@@ -100,20 +123,18 @@ namespace BOAPI.Controllers
                                                  .FirstOrDefaultAsync(q => q.Id == id);
             if (existingQuestion == null) return NotFound();
 
-            // Mettre à jour les champs simples
             existingQuestion.Texte = dto.Texte;
             existingQuestion.Type = Enum.Parse<QuestionType>(dto.Type, true);
+            existingQuestion.EtapeId = dto.EtapeId;
+            existingQuestion.Reponse = dto.Reponse;
 
-            // Gérer les options si type = Liste
             if (existingQuestion.Type == QuestionType.Liste)
             {
-                // Supprimer les options qui ne sont plus présentes
                 var optionsToRemove = existingQuestion.Options
                                                      .Where(o => dto.Options == null || !dto.Options.Any(uo => uo.Id == o.Id))
                                                      .ToList();
                 _context.ResponseOptions.RemoveRange(optionsToRemove);
 
-                // Ajouter ou mettre à jour les options existantes
                 if (dto.Options != null)
                 {
                     foreach (var optionDto in dto.Options)
@@ -128,7 +149,6 @@ namespace BOAPI.Controllers
             }
             else
             {
-                // Si le type n'est plus Liste, supprimer toutes les options existantes
                 _context.ResponseOptions.RemoveRange(existingQuestion.Options);
             }
 
@@ -136,7 +156,7 @@ namespace BOAPI.Controllers
             return NoContent();
         }
 
-        // DELETE: api/Question/5
+        // 🔹 DELETE: api/Question/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -151,5 +171,42 @@ namespace BOAPI.Controllers
 
             return NoContent();
         }
+
+        // 🔹 Méthode utilitaire pour mapper Question -> QuestionDto
+        private static QuestionDto MapToDto(Question q)
+        {
+            return new QuestionDto
+            {
+                Id = q.Id,
+                Texte = q.Texte,
+                Type = q.Type.ToString(),
+                Options = q.Options?.Select(o => new ResponseOptionDto
+                {
+                    Id = o.Id,
+                    Valeur = o.Valeur
+                }).ToList() ?? new List<ResponseOptionDto>(),
+                Reponse = q.Reponse,
+                EtapeId = q.EtapeId,
+                CheckListId = q.Etape?.CheckListId ?? 0,
+                CheckListLibelle = q.Etape?.CheckList?.Libelle ?? ""
+            };
+        }
+        
+        [HttpPost("submit-form")]
+public async Task<IActionResult> SubmitForm(FormResponseDto dto)
+{
+    foreach (var q in dto.Reponses)
+    {
+        var question = await _context.Questions.FindAsync(q.QuestionId);
+        if (question != null)
+        {
+            question.Reponse = q.Reponse;
+        }
+    }
+
+    await _context.SaveChangesAsync();
+    return Ok(new { message = "Réponses enregistrées !" });
+}
+
     }
 }

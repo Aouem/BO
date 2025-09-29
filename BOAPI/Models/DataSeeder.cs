@@ -7,30 +7,29 @@ namespace BOAPI.Data
     {
         public static void Initialize(IServiceProvider serviceProvider)
         {
-            using (var context = new BOContext(
-                serviceProvider.GetRequiredService<DbContextOptions<BOContext>>()))
-            {
-                SeedCheckListSecuritePatient(context);
-                SeedCheckListAnesthesie(context);
-                SeedCheckListHygiene(context);
-                SeedCheckListTransfusion(context);
-                SeedCheckListRadioprotection(context);
-                SeedCheckListLogistique(context);
-                SeedPersonnel(context);
-            }
+            using var context = new BOContext(
+                serviceProvider.GetRequiredService<DbContextOptions<BOContext>>());
+
+            SeedCheckListSecuritePatient(context);
+            SeedCheckListAnesthesie(context);
+            SeedCheckListHygiene(context);
+            SeedCheckListTransfusion(context);
+            SeedCheckListRadioprotection(context);
+            SeedCheckListLogistique(context);
+            SeedPersonnel(context);
         }
 
-        // ✅ 1. CheckList Sécurité Patient (ajoute ou met à jour)
+        // ✅ 1. CheckList Sécurité Patient
         public static void SeedCheckListSecuritePatient(BOContext context)
         {
             var existingCheckList = context.CheckLists
                 .Include(c => c.Etapes)
                     .ThenInclude(e => e.Questions)
+                .AsSplitQuery() // ← pour éviter le warning EF Core
                 .FirstOrDefault(c => c.Libelle == "CHECK-LIST « SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE »");
 
             if (existingCheckList == null)
             {
-                // Création si elle n’existe pas
                 existingCheckList = new CheckList
                 {
                     Libelle = "CHECK-LIST « SÉCURITÉ DU PATIENT AU BLOC OPÉRATOIRE »",
@@ -40,7 +39,6 @@ namespace BOAPI.Data
                     EstActive = true,
                     Etapes = new List<Etape>()
                 };
-
                 context.CheckLists.Add(existingCheckList);
             }
 
@@ -49,9 +47,14 @@ namespace BOAPI.Data
             existingCheckList.Description = "Vérifier ensemble pour décider";
             existingCheckList.EstActive = true;
 
-            // On vide les étapes/anciennes questions pour repartir propre
-            existingCheckList.Etapes.Clear();
+            // Supprimer les anciennes étapes et questions
+            if (existingCheckList.Etapes.Any())
+            {
+                context.Questions.RemoveRange(existingCheckList.Etapes.SelectMany(e => e.Questions));
+                context.Etapes.RemoveRange(existingCheckList.Etapes);
+            }
 
+            // Ajouter les nouvelles étapes
             existingCheckList.Etapes = new List<Etape>
             {
                 new Etape
@@ -99,8 +102,7 @@ namespace BOAPI.Data
         // ✅ 2. CheckList Anesthésie
         public static void SeedCheckListAnesthesie(BOContext context)
         {
-            if (context.CheckLists.Any(c => c.Libelle.Contains("ANESTHÉSIE")))
-                return;
+            if (context.CheckLists.Any(c => c.Libelle.Contains("ANESTHÉSIE"))) return;
 
             var checkList = new CheckList
             {
@@ -143,8 +145,7 @@ namespace BOAPI.Data
         // ✅ 3. CheckList Hygiène
         public static void SeedCheckListHygiene(BOContext context)
         {
-            if (context.CheckLists.Any(c => c.Libelle.Contains("HYGIÈNE")))
-                return;
+            if (context.CheckLists.Any(c => c.Libelle.Contains("HYGIÈNE"))) return;
 
             var checkList = new CheckList
             {
@@ -176,8 +177,7 @@ namespace BOAPI.Data
         // ✅ 4. CheckList Transfusion
         public static void SeedCheckListTransfusion(BOContext context)
         {
-            if (context.CheckLists.Any(c => c.Libelle.Contains("TRANSFUSION")))
-                return;
+            if (context.CheckLists.Any(c => c.Libelle.Contains("TRANSFUSION"))) return;
 
             var checkList = new CheckList
             {
@@ -209,8 +209,7 @@ namespace BOAPI.Data
         // ✅ 5. CheckList Radioprotection
         public static void SeedCheckListRadioprotection(BOContext context)
         {
-            if (context.CheckLists.Any(c => c.Libelle.Contains("RADIOPROTECTION")))
-                return;
+            if (context.CheckLists.Any(c => c.Libelle.Contains("RADIOPROTECTION"))) return;
 
             var checkList = new CheckList
             {
@@ -242,8 +241,7 @@ namespace BOAPI.Data
         // ✅ 6. CheckList Logistique
         public static void SeedCheckListLogistique(BOContext context)
         {
-            if (context.CheckLists.Any(c => c.Libelle.Contains("LOGISTIQUE")))
-                return;
+            if (context.CheckLists.Any(c => c.Libelle.Contains("LOGISTIQUE"))) return;
 
             var checkList = new CheckList
             {
@@ -272,7 +270,7 @@ namespace BOAPI.Data
             context.SaveChanges();
         }
 
-        // ✅ Seed Personnel (une seule fois)
+        // ✅ Seed Personnel
         public static void SeedPersonnel(BOContext context)
         {
             if (!context.Personnels.Any())

@@ -4,9 +4,10 @@ using BOAPI.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services
+// 🔹 Ajouter DbContext
 builder.Services.AddDbContext<BOContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
 
 // 🔹 Ajouter CORS
 builder.Services.AddCors(options =>
@@ -25,7 +26,7 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// 🔹 SEED DATA - Exécuter après la création de l'app
+// 🔹 SEED DATA après création de l'app
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -52,13 +53,14 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// 🔹 Swagger uniquement en dev
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// 🔹 Utiliser CORS avant UseAuthorization
+// 🔹 CORS avant UseAuthorization
 app.UseCors();
 
 app.UseHttpsRedirection();

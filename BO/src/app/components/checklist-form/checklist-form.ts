@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, FormArray, Validators, AbstractControl, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { CheckListDto, CheckListService } from '../../services/check-list-service';
+import { CheckListService } from '../../services/check-list-service';
+import { CheckListDto } from '../../models';
 
 @Component({
   selector: 'app-checklist-form',
@@ -15,6 +16,8 @@ export class CheckListFormComponent implements OnInit {
   checklists: CheckListDto[] = [];
   loading = true;
   formSubmitted = false;
+    selectedChecklist: CheckListDto | null = null;
+
 
   constructor(private fb: FormBuilder, private checklistService: CheckListService) {
     this.form = this.fb.group({
@@ -25,38 +28,47 @@ export class CheckListFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadChecklists();
-    this.addEtape();
-    this.addQuestion(0);
+
+    // ➕ Ajouter une étape et une question vide au démarrage
+    if (this.etapes.length === 0) {
+      this.addEtape();
+      this.addQuestion(0);
+    }
   }
 
   // --- GETTERS ---
-  get etapes(): FormArray<FormGroup> {
-    return this.form.get('etapes') as FormArray<FormGroup>;
+  get etapes(): FormArray {
+    return this.form.get('etapes') as FormArray;
   }
 
-  getQuestions(etapeIndex: number): FormArray<FormGroup> {
-    return this.etapes.at(etapeIndex).get('questions') as FormArray<FormGroup>;
+  getQuestions(etapeIndex: number): FormArray {
+    return this.etapes.at(etapeIndex).get('questions') as FormArray;
   }
 
-  getOptions(etapeIndex: number, questionIndex: number): FormArray<FormGroup> {
-    return this.getQuestions(etapeIndex).at(questionIndex).get('options') as FormArray<FormGroup>;
+  getOptions(etapeIndex: number, questionIndex: number): FormArray {
+    return this.getQuestions(etapeIndex).at(questionIndex).get('options') as FormArray;
   }
 
   // --- LOAD CHECKLISTS ---
-loadChecklists(): void {
-  this.checklistService.getAllCheckLists().subscribe({
-    next: (data: CheckListDto[] | null) => {
-      // Supprime tout élément null
-      this.checklists = data?.filter(cl => cl != null) || [];
-      this.loading = false;
-    },
-    error: (err) => {
-      console.error('Erreur lors du chargement des checklists :', err);
-      this.loading = false;
-    }
-  });
-}
+  loadChecklists(): void {
+    this.checklistService.getAllCheckLists().subscribe({
+      next: (data: CheckListDto[] | null) => {
+        this.checklists = data?.filter(cl => cl != null) || [];
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Erreur lors du chargement des checklists :', err);
+        this.loading = false;
+      }
+    });
+  }
+  selectChecklist(cl: CheckListDto): void {
+    this.selectedChecklist = cl;
+  }
 
+  clearSelection(): void {
+    this.selectedChecklist = null;
+  }
 
   // --- ETAPES ---
   addEtape(): void {
@@ -103,10 +115,14 @@ loadChecklists(): void {
 
   onTypeChange(etapeIndex: number, questionIndex: number): void {
     const question = this.getQuestions(etapeIndex).at(questionIndex) as FormGroup;
+
+    // Reset options si ce n’est pas une liste
     if (question.get('type')?.value !== 'Liste') {
       question.setControl('options', this.fb.array([]));
     }
-    question.get('reponse')?.setValue('');
+
+    // Reset la réponse
+    question.patchValue({ reponse: '' });
   }
 
   // --- SUBMIT ---
@@ -114,9 +130,15 @@ loadChecklists(): void {
     if (this.form.valid) {
       console.log('Valeur du formulaire :', this.form.value);
       this.formSubmitted = true;
+
+      // API call
       // this.checklistService.createCheckList(this.form.value).subscribe(...)
     } else {
-      console.warn('Formulaire invalide');
+      console.warn('Formulaire invalide', this.form.value);
+      this.form.markAllAsTouched();
     }
   }
+
+
+  
 }

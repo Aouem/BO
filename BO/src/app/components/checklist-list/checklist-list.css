@@ -730,3 +730,24 @@ textarea:focus {
 .control-icon { color: #ffc107; }
 .safety-icon { color: #dc3545; }
 .documentation-icon { color: #17a2b8; }
+
+
+.checklist-card {
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.checklist-detail {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}

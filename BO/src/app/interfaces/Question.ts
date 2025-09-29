@@ -1,4 +1,4 @@
-import { QuestionDto } from "../services/check-list-service";
+import { QuestionDto } from "../models";
 import { ResponseOption } from "./ResponseOption";
 
 export interface Question {

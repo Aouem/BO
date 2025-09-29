@@ -2,26 +2,27 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { CheckListDto, CreateCheckListDto } from '../models';
 
 // DTO pour poster les questions avec options
-export interface CreateResponseOptionDto {
+/* export interface CreateResponseOptionDto {
   id?: number; 
   valeur: string;
-}
+} */
 
-export interface CreateQuestionDto {
+/* export interface CreateQuestionDto {
   texte: string;
   type: string; // "Boolean" | "Liste" | "Texte"
   options?: CreateResponseOptionDto[];
   reponse?: string; // facultatif pour stocker la réponse
-}
+} */
 
-export interface CreateEtapeDto {
+/* export interface CreateEtapeDto {
   nom: string;
   questions: CreateQuestionDto[];
-}
+} */
 
-export interface CreateCheckListDto {
+/* export interface CreateCheckListDto {
   libelle: string;
   etapes: CreateEtapeDto[]; // <-- ici on utilise "etapes" comme côté backend
 }
@@ -35,21 +36,31 @@ export interface ResponseOptionDto {
 export interface QuestionDto {
   id: number;
   texte: string;
-  type: string; // "Boolean" | "Liste" | "Texte"
+  type: string;
+  estObligatoire: boolean;
+  reponse: string | null;
+  commentaire: string | null;
   options: ResponseOptionDto[];
+  etapeId: number;
+  checkListId: number;
+  checkListLibelle: string | null;
 }
 
 export interface EtapeDto {
   id: number;
-  nom: string;
+  nom: string; // <-- Le nom est bien présent ici
+  ordre: number;
   questions: QuestionDto[];
+  estValidee: boolean;
 }
 
 export interface CheckListDto {
   id: number;
   libelle: string;
-  etapes: EtapeDto[]; // <-- correspond au backend
-}
+  version: string;
+  description: string;
+  etapes: EtapeDto[]; // <-- Structure complète avec étapes
+} */
 
 @Injectable({
   providedIn: 'root'
@@ -72,9 +83,10 @@ export class CheckListService {
   }
 
   // --- NOUVELLE MÉTHODE POUR LA MISE À JOUR ---
-  updateCheckList(id: number, dto: CreateCheckListDto): Observable<CheckListDto> {
-    return this.http.put<CheckListDto>(`${this.apiUrl}/${id}`, dto);
-  }
+// Changer la signature de la méthode update
+updateCheckList(id: number, dto: CreateCheckListDto): Observable<CheckListDto> {
+  return this.http.put<CheckListDto>(`${this.apiUrl}/${id}`, dto);
+}
 
   deleteCheckList(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);

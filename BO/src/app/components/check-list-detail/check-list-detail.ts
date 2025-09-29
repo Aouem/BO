@@ -2,7 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { CheckListService, CheckListDto } from '../../services/check-list-service';
+import { CheckListService } from '../../services/check-list-service';
+import { CheckListDto } from '../../models';
 
 // Interfaces frontend pour ajouter la propriété 'reponse'
 interface QuestionFrontend {

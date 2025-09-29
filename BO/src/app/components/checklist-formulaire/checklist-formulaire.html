@@ -1,0 +1,84 @@
+<div class="container my-4">
+  <!-- Nom de la checklist -->
+  <h2 class="mb-4 text-center text-primary">📝 {{ checklistNom }}</h2>
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="alert alert-info text-center">
+      Chargement des questions...
+    </div>
+
+    <!-- Étapes -->
+    <div *ngFor="let etape of etapes; trackBy: trackByEtapeId; let etapeIndex = index" class="etape-section mb-5">
+      
+      <!-- En-tête de l'étape avec séparation visuelle -->
+      <div class="etape-header mb-4 p-4 text-center position-relative">
+        <div class="etape-badge">{{ etapeIndex + 1 }}</div>
+        <h4 class="etape-title mb-0">{{ etape.nom }}</h4>
+        <div class="etape-divider"></div>
+      </div>
+
+      <!-- Questions -->
+      <div class="questions-container">
+        <div *ngFor="let q of etape.questions; let i = index; trackBy: trackByQuestionId" 
+             class="question-card mb-4 p-4 shadow rounded">
+          <h5 class="question-title mb-3">{{ i + 1 }}. {{ q.texte }}</h5>
+
+          <!-- Boolean / Oui-Non / N/A -->
+          <div *ngIf="q.type === 'Boolean' || q.type === 'BooleanNA'" class="boolean-options mt-3">
+            <div class="d-flex justify-content-center gap-4">
+              <div class="form-check boolean-option" *ngFor="let val of getBooleanOptions(q.type)">
+                <input class="form-check-input"
+                       type="radio"
+                       [formControlName]="'question_' + q.id"
+                       [value]="val"
+                       id="{{val.toLowerCase()}}_{{q.id}}">
+                <label class="form-check-label boolean-label" for="{{val.toLowerCase()}}_{{q.id}}">
+                  {{ val }}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Liste -->
+          <div *ngIf="q.type === 'Liste'" class="mt-3">
+            <select class="form-select form-select-lg" [formControlName]="'question_' + q.id">
+              <option value="">Sélectionnez...</option>
+              <option *ngFor="let opt of q.options" [value]="opt.valeur">{{ opt.valeur }}</option>
+            </select>
+          </div>
+
+          <!-- Texte -->
+          <div *ngIf="q.type === 'Texte'" class="mt-3">
+            <input type="text" class="form-control form-control-lg" [formControlName]="'question_' + q.id" placeholder="Votre réponse...">
+          </div>
+
+          <!-- Validation -->
+          <div *ngIf="form.get('question_' + q.id)?.touched && form.get('question_' + q.id)?.invalid" class="text-danger mt-2 text-center">
+            ⚠️ Cette question est obligatoire.
+          </div>
+        </div>
+      </div>
+
+      <!-- Séparateur entre étapes (sauf pour la dernière) -->
+      <div *ngIf="etapeIndex < etapes.length - 1" class="etape-separator mt-4 mb-4">
+        <div class="separator-line"></div>
+        <div class="separator-icon">⤵️</div>
+        <div class="separator-line"></div>
+      </div>
+    </div>
+
+    <!-- Bouton de soumission -->
+    <div class="text-center mt-5">
+      <button type="submit" class="btn btn-primary btn-lg px-5 py-3" [disabled]="loading">
+        <span class="fw-bold">Soumettre ✅</span>
+      </button>
+    </div>
+
+    <!-- Message succès -->
+    <div *ngIf="submitted" class="alert alert-success mt-3 text-center py-3">
+      <h5 class="mb-0">✅ Formulaire soumis avec succès !</h5>
+    </div>
+  </form>
+</div>
