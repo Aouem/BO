@@ -1,43 +1,55 @@
-<div *ngIf="loading">Chargement...</div>
+<!-- Loading -->
+<div *ngIf="loading" class="alert alert-info">Chargement…</div>
 
-<div *ngIf="!loading && checklist">
-  <h2>{{ checklist.libelle }}</h2>
-  <p>Total de questions : {{ totalQuestions }}</p>
+<!-- Erreur -->
+<div *ngIf="!loading && errorMsg" class="alert alert-warning">{{ errorMsg }}</div>
 
-  <div *ngFor="let etape of checklist.etapes; let ei = index" class="etape-block">
-    <h3>{{ etape.nom }}</h3>
-
-    <div *ngFor="let question of etape.questions; let qi = index" class="question-block">
-      <label>{{ question.texte }}</label>
-
-      <!-- Si type Boolean ou BooleanNA -->
-      <select *ngIf="question.type === 'Boolean' || question.type === 'BooleanNA'"
-              class="form-select"
-              [(ngModel)]="question.reponse">
-       <option *ngFor="let option of getBooleanOptions(question)" [value]="option">
-  {{ option }}
-</option>
-
-      </select>
-
-      <!-- Si type Liste -->
-      <select *ngIf="question.type === 'Liste'"
-              class="form-select"
-              [(ngModel)]="question.reponse">
-        <option *ngFor="let option of question.options" [value]="option.valeur">
-          {{ option.valeur }}
-        </option>
-      </select>
-
-      <!-- Si type Texte -->
-      <input *ngIf="question.type === 'Texte'"
-             type="text"
-             class="form-control"
-             [(ngModel)]="question.reponse">
+<!-- Contenu -->
+<ng-container *ngIf="!loading && !errorMsg && agg as c">
+  <div class="mb-3">
+    <h3 class="mb-1">{{ c.libelle }}</h3>
+    <div class="text-muted">
+      {{ totalSubmissions }} {{ headerCountLabel }} · {{ c.etapes.length }} étape(s)
     </div>
   </div>
-</div>
 
-<div *ngIf="!loading && !checklist">
-  <p>Checklist introuvable.</p>
-</div>
+  <div *ngFor="let et of c.etapes; let ei = index; trackBy: trackByEt" class="mb-4">
+    <h5 class="mb-3">Étape {{ ei + 1 }} — {{ et.nom }}</h5>
+
+    <div *ngFor="let q of et.questions; trackBy: trackByQ" class="ps-3 border-start mb-3">
+      <div class="fw-semibold mb-1">• {{ q.texte }}</div>
+
+      <ng-container *ngIf="q.submissions.length > 0; else noData">
+        <ul class="mb-2">
+          <li *ngFor="let s of q.submissions; trackBy: trackByS">
+            <span [class]="badgeClass(s.reponse)" class="me-2">{{ s.reponse || '—' }}</span>
+
+            <!-- Métadonnées affichées uniquement si réellement présentes -->
+            <small *ngIf="hasMeta(s)" class="text-muted">
+              <ng-container *ngIf="s.submissionId != null">#{{ s.submissionId }} — </ng-container>
+              <ng-container *ngIf="s.submittedBy">{{ s.submittedBy }}</ng-container>
+              <ng-container *ngIf="s.submittedAt"> <span *ngIf="s.submittedBy">·</span> {{ s.submittedAt | date:'short' }}</ng-container>
+            </small>
+
+            <!-- Si pseudo-soumission (aucune meta) -->
+            <small *ngIf="!hasMeta(s)" class="text-muted">Réponse actuelle</small>
+          </li>
+        </ul>
+
+        <!-- Petit résumé Oui/Non/N/A -->
+        <div class="mt-1">
+          <small class="text-muted">
+            Résumé :
+            <span class="text-success">Oui {{ summaryFor(q).oui }}</span> ·
+            <span class="text-danger">Non {{ summaryFor(q).non }}</span>
+            <span *ngIf="summaryFor(q).na > 0"> · <span class="text-secondary">N/A {{ summaryFor(q).na }}</span></span>
+          </small>
+        </div>
+      </ng-container>
+
+      <ng-template #noData>
+        <div class="text-muted">Aucune soumission pour cette question.</div>
+      </ng-template>
+    </div>
+  </div>
+</ng-container>

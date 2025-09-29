@@ -4,38 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment'; // <-- importer l'environnement
 import { FormResponseDto, QuestionDto } from '../models';
 
-// DTO pour les options de réponse
-/* export interface ResponseOptionDto {
-  id: number;
-  valeur: string;
-}
 
-// DTO pour les questions
-export interface QuestionDto {
-  id: number;
-  texte: string;
-  type: 'Boolean' | 'BooleanNA' | 'Liste' | 'Texte';
-  options?: ResponseOptionDto[];
-  reponse?: string;
-  etapeId: number;
-  etapeNom?: string;      // ← Doit être présent
-  checkListId?: number;
-  checkListLibelle?: string;
-  estObligatoire?: boolean;
-}
-
-// DTO pour envoyer la réponse d’une question
-export interface QuestionResponseDto {
-  questionId: number;
-  reponse?: string;
-}
-
-// DTO pour envoyer le formulaire complet
-export interface FormResponseDto {
-  checkListId: number;
-  reponses: QuestionResponseDto[];
-}
- */
 @Injectable({
   providedIn: 'root'
 })

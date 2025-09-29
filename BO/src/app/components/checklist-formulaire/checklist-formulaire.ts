@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { FormService } from '../../services/form-service';
-import { CheckListService } from '../../services/check-list-service'; // <-- Importer CheckListService
+import { CheckListService } from '../../services/check-list-service';
+import { CheckListDto, EtapeDto, QuestionDto, FormResponseDto, QuestionResponseDto } from '../../models';
 import { CommonModule } from '@angular/common';
-import { CheckListDto, EtapeDto, FormResponseDto, QuestionDto, QuestionResponseDto } from '../../models';
 
 @Component({
   selector: 'app-checklist-formulaire',
@@ -13,113 +13,393 @@ import { CheckListDto, EtapeDto, FormResponseDto, QuestionDto, QuestionResponseD
   styleUrls: ['./checklist-formulaire.css']
 })
 export class ChecklistFormulaireComponent implements OnInit {
-  checklistId: number = 8; // Exemple : checklist 8
+  checklistId: number = 8;
   checklistNom: string = '';
   etapes: EtapeDto[] = [];
   form!: FormGroup;
   loading: boolean = false;
+
+  // NAV question-par-question
+  currentEtapeIndex: number = 0;
+  currentQuestionIndex: number = 0; // question actuelle dans l’étape
+
+  // état
   submitted: boolean = false;
+  reponsesPartielles: QuestionResponseDto[] = [];
+  etapesValidees: boolean[] = [];
+
+  // affichage
+  mode: 'etape' | 'question' = 'etape';
+  autoAdvance: boolean = true; // avance auto à la question suivante après réponse
 
   constructor(
     private formService: FormService,
-    private checkListService: CheckListService, // <-- Injecter CheckListService
+    private checkListService: CheckListService,
     private fb: FormBuilder
   ) {}
 
   ngOnInit(): void {
     this.form = this.fb.group({});
     this.loadChecklist();
+    this.loadPartialProgress();
   }
 
+  // === CHARGEMENT ===
   loadChecklist() {
     this.loading = true;
-
-    // ✅ UTILISER CheckListService au lieu de FormService
     this.checkListService.getCheckList(this.checklistId).subscribe({
       next: (checklist: CheckListDto) => {
         this.checklistNom = checklist.libelle;
-        this.etapes = checklist.etapes; // <-- Les étapes avec leurs noms sont déjà incluses
-
-        this.buildForm();
+        this.etapes = checklist.etapes;
+        this.etapesValidees = new Array(this.etapes.length).fill(false);
         this.loading = false;
-
-        console.log("Checklist :", this.checklistNom);
-        console.log("Étapes :", this.etapes);
+        this.loadEtapesValidees();
+        // sécuriser l’index si rechargé d’un storage antérieur
+        if (!this.currentEtape) this.currentEtapeIndex = 0;
+        if (!this.currentQuestion) this.currentQuestionIndex = 0;
       },
-      error: (err: any) => {
-        console.error('Erreur lors du chargement de la checklist', err);
+      error: (_err: any) => {
         this.loading = false;
+        alert('Erreur lors du chargement de la checklist.');
       }
     });
   }
 
+  // === GETTERS ===
+  get currentEtape(): EtapeDto | null {
+    return this.etapes[this.currentEtapeIndex] || null;
+  }
+  get currentQuestion(): QuestionDto | null {
+    const etape = this.currentEtape;
+    return etape?.questions?.[this.currentQuestionIndex] ?? null;
+  }
+  get isFirstQuestion(): boolean {
+    return this.currentQuestionIndex === 0;
+  }
+  get isLastQuestionInEtape(): boolean {
+    const etape = this.currentEtape;
+    if (!etape) return true;
+    return this.currentQuestionIndex === etape.questions.length - 1;
+  }
+
+  get totalQuestions(): number {
+    return this.etapes.reduce((total, etape) => total + etape.questions.length, 0);
+  }
+  get answeredQuestions(): number {
+    return this.reponsesPartielles.length;
+  }
+  get etapesCompletees(): number {
+    return this.etapesValidees.filter(v => v).length;
+  }
+
+  // === PROGRESSION ===
+  private isNonEmpty(v?: string | null): boolean {
+    return !!v && v.trim() !== '';
+  }
+
+  getGlobalProgress(): number {
+    const total = this.totalQuestions;
+    if (total === 0) return 0;
+    const answered = this.etapes.reduce((acc, _, idx) => acc + this.getEtapeAnsweredQuestions(idx), 0);
+    return (answered / total) * 100;
+  }
+
+  getEtapeProgress(etapeIndex: number): number {
+    const etape = this.etapes[etapeIndex];
+    if (!etape?.questions?.length) return 0;
+    const answered = etape.questions.filter(q => this.isNonEmpty(this.getQuestionResponse(q.id))).length;
+    return (answered / etape.questions.length) * 100;
+  }
+
+  getEtapeAnsweredQuestions(etapeIndex: number): number {
+    const etape = this.etapes[etapeIndex];
+    if (!etape?.questions) return 0;
+    return etape.questions.filter(q => this.isNonEmpty(this.getQuestionResponse(q.id))).length;
+  }
+
+  // Étape complète = toutes les questions avec réponse non vide
+  isEtapeComplete(etapeIndex: number): boolean {
+    const etape = this.etapes[etapeIndex];
+    if (!etape?.questions?.length) return false;
+    return etape.questions.every(q => this.isNonEmpty(this.getQuestionResponse(q.id)));
+  }
+
+  // === VALIDATION ÉTAPES ===
+  validerEtape() {
+    if (this.isEtapeComplete(this.currentEtapeIndex)) {
+      this.etapesValidees[this.currentEtapeIndex] = true;
+      this.savePartialProgress();
+
+      if (this.currentEtapeIndex === this.etapes.length - 1) {
+        this.submitFinalForm();
+      } else {
+        // passer à l’étape suivante
+        this.currentEtapeIndex++;
+        this.currentQuestionIndex = 0;
+        this.mode = 'etape';
+        this.savePartialProgress();
+      }
+    }
+  }
+
+  reouvrirEtape(etapeIndex: number) {
+    this.etapesValidees[etapeIndex] = false;
+    this.savePartialProgress();
+  }
+
+  // === NAVIGATION ===
+  commencerEtape(etapeIndex: number) {
+    this.currentEtapeIndex = etapeIndex;
+    this.mode = 'question';
+    this.goToFirstUnansweredQuestion();
+    this.savePartialProgress();
+  }
+
+  retourAuTableauDeBord() {
+    this.mode = 'etape';
+    this.savePartialProgress();
+  }
+
+  nextQuestion() {
+    if (!this.isLastQuestionInEtape) {
+      this.currentQuestionIndex++;
+      this.savePartialProgress();
+    }
+  }
+
+  prevQuestion() {
+    if (!this.isFirstQuestion) {
+      this.currentQuestionIndex--;
+      this.savePartialProgress();
+    }
+  }
+
+  canGoNext(): boolean {
+    const q = this.currentQuestion;
+    if (!q) return false;
+    return this.isNonEmpty(this.getQuestionResponse(q.id));
+  }
+
+  private goToFirstUnansweredQuestion(): void {
+    const etape = this.currentEtape;
+    if (!etape?.questions?.length) {
+      this.currentQuestionIndex = 0;
+      return;
+    }
+    const idx = etape.questions.findIndex(q => !this.isNonEmpty(this.getQuestionResponse(q.id)));
+    this.currentQuestionIndex = idx >= 0 ? idx : 0;
+  }
+
+  // === RÉPONSES ===
+  getQuestionResponse(questionId: number): string | null {
+    const response = this.reponsesPartielles.find(r => r.questionId === questionId);
+    return response?.reponse ?? null;
+  }
+
+  isQuestionResponse(questionId: number, value: string): boolean {
+    return this.getQuestionResponse(questionId) === value;
+  }
+
+  onAnswerSelected(questionId: number, value: string) {
+    const response: QuestionResponseDto = { questionId, reponse: value };
+    const existingIndex = this.reponsesPartielles.findIndex(r => r.questionId === questionId);
+
+    if (existingIndex >= 0) this.reponsesPartielles[existingIndex] = response;
+    else this.reponsesPartielles.push(response);
+
+    this.savePartialProgress();
+
+    // Avancer automatiquement si on est en mode question
+    if (this.mode === 'question' && this.autoAdvance && this.canGoNext()) {
+      if (!this.isLastQuestionInEtape) this.nextQuestion();
+    }
+  }
+
+  // === STORAGE ===
+  savePartialProgress() {
+    const partialData = {
+      checkListId: this.checklistId,
+      reponses: this.reponsesPartielles,
+      currentEtape: this.currentEtapeIndex,
+      currentQuestion: this.currentQuestionIndex,
+      etapesValidees: this.etapesValidees,
+      mode: this.mode
+    };
+    localStorage.setItem(`checklist_${this.checklistId}_progress`, JSON.stringify(partialData));
+  }
+
+  loadPartialProgress() {
+    const saved = localStorage.getItem(`checklist_${this.checklistId}_progress`);
+    if (saved) {
+      try {
+        const progress = JSON.parse(saved);
+        this.reponsesPartielles = progress.reponses || [];
+        this.currentEtapeIndex = Number.isInteger(progress.currentEtape) ? progress.currentEtape : 0;
+        this.currentQuestionIndex = Number.isInteger(progress.currentQuestion) ? progress.currentQuestion : 0;
+        this.etapesValidees = progress.etapesValidees || new Array(this.etapes.length).fill(false);
+        this.mode = progress.mode || 'etape';
+      } catch (_e) {
+        // ignore
+      }
+    }
+  }
+
+  loadEtapesValidees() {
+    this.etapes.forEach((_, index) => {
+      this.etapesValidees[index] = this.isEtapeComplete(index);
+    });
+  }
+
+  // Réparer les validations incohérentes (sans logs console)
+  reparerValidations(): void {
+    let repairs = 0;
+    this.etapes.forEach((_, index) => {
+      const shouldBe = this.isEtapeComplete(index);
+      if (this.etapesValidees[index] !== shouldBe) {
+        this.etapesValidees[index] = shouldBe;
+        repairs++;
+      }
+    });
+    if (repairs > 0) {
+      this.savePartialProgress();
+      alert(`${repairs} étape(s) réparée(s).`);
+    } else {
+      alert('Aucune réparation nécessaire.');
+    }
+  }
+
+  // Vérification simple (sans console)
+  verifierToutesEtapes(): void {
+    const totals = this.etapes.map((e, i) => `${i + 1}: ${this.getEtapeAnsweredQuestions(i)}/${e.questions.length}${this.etapesValidees[i] ? ' ✅' : ''}`);
+    alert(`Vérification:\n${totals.join('\n')}`);
+  }
+
+  // Forcer validation si complète (sans console)
+  forcerValidationEtape(etapeIndex: number): void {
+    if (this.isEtapeComplete(etapeIndex)) {
+      this.etapesValidees[etapeIndex] = true;
+      this.savePartialProgress();
+      alert(`Étape ${etapeIndex + 1} validée.`);
+    } else {
+      alert(`Étape ${etapeIndex + 1} incomplète.`);
+    }
+  }
+
+  // === SUBMIT ===
+  submitFinalForm() {
+    if (this.reponsesPartielles.length === 0) {
+      alert('Aucune réponse à soumettre !');
+      return;
+    }
+
+    const toutesEtapesValidees = this.etapes.every((_, index) => this.isEtapeComplete(index));
+    if (!toutesEtapesValidees) {
+      alert('Veuillez compléter toutes les étapes avant de soumettre.');
+      return;
+    }
+
+    const formData: FormResponseDto = {
+      checkListId: this.checklistId,
+      reponses: this.reponsesPartielles
+    };
+
+    this.loading = true;
+    this.formService.submitForm(formData).subscribe({
+      next: (_response) => {
+        this.submitted = true;
+        this.loading = false;
+        localStorage.removeItem(`checklist_${this.checklistId}_progress`);
+      },
+      error: (_err: any) => {
+        this.loading = false;
+        alert('Erreur lors de la soumission du formulaire');
+      }
+    });
+  }
+
+  // === RESET ===
+  resetForm() {
+    this.currentEtapeIndex = 0;
+    this.currentQuestionIndex = 0;
+    this.reponsesPartielles = [];
+    this.etapesValidees = new Array(this.etapes.length).fill(false);
+    this.mode = 'etape';
+    this.submitted = false;
+    localStorage.removeItem(`checklist_${this.checklistId}_progress`);
+  }
+
+  // === UTILITAIRES ===
   getBooleanOptions(type: string): string[] {
     return type === 'BooleanNA' ? ['Oui', 'Non', 'N/A'] : ['Oui', 'Non'];
   }
 
-  buildForm() {
-    this.etapes.forEach(etape => {
-      etape.questions.forEach(q => {
-        let control: FormControl;
-        switch (q.type) {
-          case 'Boolean':
-          case 'BooleanNA':
-            control = this.fb.control(
-              null, 
-              q.estObligatoire ? Validators.required : null
-            );
-            break;
-          case 'Liste':
-            control = this.fb.control(q.reponse || null, Validators.required);
-            break;
-          case 'Texte':
-            control = this.fb.control(q.reponse || '', Validators.required);
-            break;
-          default:
-            control = this.fb.control(q.reponse || '');
-        }
-        this.form.addControl('question_' + q.id, control);
-      });
-    });
+  getEtapeColorClass(etapeIndex: number): string {
+    const colors = ['etape-color-0', 'etape-color-1', 'etape-color-2', 'etape-color-3'];
+    return colors[etapeIndex % colors.length] || 'etape-color-0';
   }
 
-  onSubmit() {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
+  isLastEtape(): boolean {
+    return this.currentEtapeIndex === this.etapes.length - 1;
+  }
+
+  toutesEtapesValidees(): boolean {
+    return this.etapesValidees.every(v => v);
+  }
+
+  // Aperçu simple (sans logs)
+  previewSoumission(): void {
+    alert(`Prévisualisation: ${this.reponsesPartielles.length} réponses`);
+  }
+
+  // Étapes complètes (toutes les questions répondues)
+getEtapesCompletes(): number[] {
+  const indices: number[] = [];
+  this.etapes.forEach((_, index) => {
+    if (this.isEtapeComplete(index)) {
+      indices.push(index);
     }
+  });
+  return indices;
+}
 
-    const responses: QuestionResponseDto[] = [];
-    this.etapes.forEach(etape => {
-      etape.questions.forEach(q => {
-        responses.push({
-          questionId: q.id,
-          reponse: this.form.get('question_' + q.id)?.value
-        });
-      });
-    });
+// Étapes complètes mais non validées
+getEtapesCompletesNonValidees(): number[] {
+  return this.getEtapesCompletes().filter(index => !this.etapesValidees[index]);
+}
 
-    const formData: FormResponseDto = {
-      checkListId: this.checklistId,
-      reponses: responses
-    };
+/** Classe des boutons de choix (Oui/Non/N/A) avec couleurs persistantes */
+getChoiceBtnClasses(questionId: number, value: string) {
+  const selected = this.isQuestionResponse(questionId, value);
+  // Mapping Bootstrap : Oui=success, Non=danger, N/A=secondary
+  const map = {
+    'Oui': { on: 'btn-success', off: 'btn-outline-success' },
+    'Non': { on: 'btn-danger',  off: 'btn-outline-danger'  },
+    'N/A': { on: 'btn-secondary', off: 'btn-outline-secondary' }
+  } as const;
 
-    this.formService.submitForm(formData).subscribe({
-      next: () => {
-        this.submitted = true;
-        console.log('Formulaire soumis avec succès !', formData);
-      },
-      error: (err: any) => {
-        console.error('Erreur lors de la soumission', err);
-      }
-    });
+  const styles = map[value as keyof typeof map] || { on: 'btn-primary', off: 'btn-outline-primary' };
+  return selected ? styles.on : styles.off;
+}
+
+/** Badge coloré affichant la réponse sélectionnée */
+answerBadgeClass(value: string) {
+  switch (value) {
+    case 'Oui': return 'bg-success';
+    case 'Non': return 'bg-danger';
+    case 'N/A': return 'bg-secondary';
+    default:    return 'bg-primary';
   }
+}
 
-  trackByEtapeId(index: number, etape: EtapeDto): number {
-    return etape.id;
-  }
+/** Bordure de la carte question selon la réponse (vert/rouge/gris) */
+getAnswerCardClass(questionId: number) {
+  const rep = this.getQuestionResponse(questionId);
+  return {
+    ok: rep === 'Oui',
+    ko: rep === 'Non',
+    na: rep === 'N/A'
+  };
+}
 
-  trackByQuestionId(index: number, question: QuestionDto): number {
-    return question.id;
-  }
+
 }

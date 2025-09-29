@@ -1,26 +1,15 @@
 import { Routes } from '@angular/router';
 import { CheckListFormComponent } from './components/checklist-form/checklist-form';
 import { CheckListListComponent } from './components/checklist-list/checklist-list';
-import { CheckListDetailComponent } from './components/check-list-detail/check-list-detail'; // <-- Ajouté
+import { CheckListDetailComponent } from './components/check-list-detail/check-list-detail';
 import { ChecklistFormulaireComponent } from './components/checklist-formulaire/checklist-formulaire';
 
 export const routes: Routes = [
-  // Liste de toutes les checklists
-  { path: 'checklists', component: CheckListListComponent },
+  { path: 'checklists', component: CheckListListComponent, title: 'Checklists' },
+  { path: 'checklists/new', component: CheckListFormComponent, title: 'Nouvelle checklist' },
+  { path: 'formulaire', component: ChecklistFormulaireComponent, title: 'Formulaire checklist' },
+  { path: 'checklists/:id', component: CheckListDetailComponent, title: 'Détail checklist' },
 
-  // Formulaire pour créer une checklist
-  { path: 'checklists/new', component: CheckListFormComponent },
-
-   // Formulaire pour créer une checklist
-  { path: 'formulaire', component: ChecklistFormulaireComponent },
-
-
-  // Formulaire pour afficher/éditer une checklist par ID
-  { path: 'checklists/:id', component: CheckListDetailComponent }, 
-
-  // Redirection par défaut vers la liste
-  { path: '', redirectTo: '/checklists', pathMatch: 'full' },
-
-  // Route wildcard pour tout ce qui n'existe pas
-  { path: '**', redirectTo: '/checklists' }
+  { path: '', redirectTo: 'checklists', pathMatch: 'full' },
+  { path: '**', redirectTo: 'checklists' }
 ];

@@ -71,3 +71,50 @@ export interface FormResponseDto {
   checkListId: number;
   reponses: QuestionResponseDto[];
 }
+
+export interface CheckList {
+  libelle: string;
+  questions: Question[];
+}
+
+
+export interface Question {
+  texte: string;
+  type: 'Boolean' | 'BooleanNA' | 'Texte' | 'Liste';
+  options?: ResponseOption[];
+  hasNA?: boolean;
+  reponse?: string;
+  id?: number;
+}
+
+export interface QuestionWithResponse extends Question {}
+
+// Fonction utilitaire pour convertir QuestionDto (backend) en Question (frontend)
+export function mapQuestionDtoToQuestion(q: QuestionDto): QuestionWithResponse {
+  let strictType: Question['type'] = 'Boolean';
+  if (q.type === 'Boolean' || q.type === 'BooleanNA' || q.type === 'Texte' || q.type === 'Liste') {
+    strictType = q.type;
+  }
+
+  return {
+    ...q,
+    type: strictType,
+    options: q.options || [],
+    reponse: '',
+    id: q.id
+  };
+}
+
+export interface ResponseOption {
+  valeur: string;
+}
+
+// === INTERFACES POUR LA LECTURE DES SOUMISSIONS (historique) ===
+// (le backend doit renvoyer au minimum ça pour chaque soumission)
+export interface FormSubmissionDto {
+  id: number;
+  checkListId: number;
+  submittedAt: string;      // ISO date string
+  submittedBy?: string;     // optionnel
+  reponses: QuestionResponseDto[];
+}
